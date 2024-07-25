@@ -17,11 +17,11 @@ func NewRouter(repository repo.Repository) *Router {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			path := r.URL.Path[len("/update/"):]
+			path := strings.Trim(r.URL.Path[len("/update/"):], "/")
 			splitPath := strings.Split(path, "/")
 			switch splitPath[0] {
 			case "gauge":
-				if len(splitPath) < 3 {
+				if len(splitPath) == 1 {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if len(splitPath) != 3 {
@@ -33,9 +33,9 @@ func NewRouter(repository repo.Repository) *Router {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				repository.PutGauge(splitPath[1], repo.Gauge(metric))
+				repository.PutGauge(splitPath[1], metric)
 			case "counter":
-				if len(splitPath) < 3 {
+				if len(splitPath) == 1 {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if len(splitPath) != 3 {
@@ -47,7 +47,7 @@ func NewRouter(repository repo.Repository) *Router {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				repository.PutCounter(splitPath[1], repo.Counter(metric))
+				repository.PutCounter(splitPath[1], metric)
 			default:
 				w.WriteHeader(http.StatusBadRequest)
 				return

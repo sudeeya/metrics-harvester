@@ -1,27 +1,29 @@
 package storage
 
-import repo "github.com/sudeeya/metrics-harvester/internal/repository"
+import "github.com/sudeeya/metrics-harvester/internal/repository/metrics"
 
 type MemStorage struct {
-	gauges   map[string]repo.Gauge
-	counters map[string]repo.Counter
+	metrics map[string]any
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		gauges:   make(map[string]repo.Gauge),
-		counters: make(map[string]repo.Counter),
+		metrics: make(map[string]any),
 	}
 }
 
-func (ms *MemStorage) PutGauge(metricName string, metricValue repo.Gauge) {
-	ms.gauges[metricName] = metricValue
+func (ms *MemStorage) PutGauge(name string, value float64) {
+	if _, ok := ms.metrics[name]; !ok {
+		ms.metrics[name] = metrics.NewGauge(name, value)
+	} else {
+		ms.metrics[name].(*metrics.Gauge).ChangeValue(value)
+	}
 }
 
-func (ms *MemStorage) PutCounter(metricName string, metricValue repo.Counter) {
-	if _, ok := ms.counters[metricName]; !ok {
-		ms.counters[metricName] = metricValue
+func (ms *MemStorage) PutCounter(name string, value int64) {
+	if _, ok := ms.metrics[name]; !ok {
+		ms.metrics[name] = metrics.NewCounter(name, value)
 	} else {
-		ms.counters[metricName] += metricValue
+		ms.metrics[name].(*metrics.Counter).IncreaseValue(value)
 	}
 }

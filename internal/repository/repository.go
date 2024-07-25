@@ -1,10 +1,6 @@
 package repository
 
-type Gauge float64
-
-type Counter int64
-
 type Repository interface {
-	PutGauge(metricName string, metricValue Gauge)
-	PutCounter(metricName string, metricValue Counter)
+	PutGauge(name string, value float64)
+	PutCounter(name string, value int64)
 }
