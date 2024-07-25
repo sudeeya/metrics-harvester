@@ -18,7 +18,7 @@ func main() {
 			splitPath := strings.Split(path, "/")
 			switch splitPath[0] {
 			case "gauge":
-				if len(splitPath) == 1 {
+				if len(splitPath) < 3 {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if len(splitPath) != 3 {
@@ -32,7 +32,7 @@ func main() {
 				}
 				memStorage.PutGauge(splitPath[1], repo.Gauge(metric))
 			case "counter":
-				if len(splitPath) == 1 {
+				if len(splitPath) < 3 {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				} else if len(splitPath) != 3 {
