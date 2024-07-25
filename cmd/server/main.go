@@ -15,17 +15,16 @@ func main() {
 	mux.HandleFunc("/update/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			path := r.URL.Path[len("/update/"):]
-			if path == "" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
 			splitPath := strings.Split(path, "/")
-			if len(splitPath) != 3 {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
 			switch splitPath[0] {
 			case "gauge":
+				if len(splitPath) == 1 {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				} else if len(splitPath) != 3 {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
 				metric, err := strconv.ParseFloat(splitPath[2], 64)
 				if err != nil {
 					w.WriteHeader(http.StatusBadRequest)
@@ -33,6 +32,13 @@ func main() {
 				}
 				memStorage.PutGauge(splitPath[1], repo.Gauge(metric))
 			case "counter":
+				if len(splitPath) == 1 {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				} else if len(splitPath) != 3 {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
 				metric, err := strconv.ParseInt(splitPath[2], 0, 64)
 				if err != nil {
 					w.WriteHeader(http.StatusBadRequest)
