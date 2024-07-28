@@ -46,7 +46,7 @@ func CreateCounterHandler(repository repo.Repository) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			metric, err := strconv.ParseInt(splitPath[2], 0, 64)
+			metric, err := strconv.ParseInt(splitPath[1], 0, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
