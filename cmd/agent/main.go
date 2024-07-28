@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -84,7 +85,15 @@ func main() {
 				metricValue = reflect.ValueOf(memStats).FieldByName(metricName).String()
 			}
 			path := formPath(metricType, metricName, metricValue)
-			client.Post(path, "text/plain", nil)
+			response, err := client.Post(path, "text/plain", nil)
+			if err != nil {
+				fmt.Println(err)
+			}
+			_, err = io.Copy(io.Discard, response.Body)
+			response.Body.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 }
