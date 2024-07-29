@@ -26,9 +26,9 @@ func TestIncreaseValue_Basic(t *testing.T) {
 
 func TestIncreaseValue_Stress(t *testing.T) {
 	var (
-		n       int64    = 1000000
-		counter *Counter = NewCounter("count", 0)
-		result  *Counter = NewCounter("count", n)
+		n       int64 = 1000000
+		counter       = NewCounter("count", 0)
+		result        = NewCounter("count", n)
 	)
 	var i int64
 	for i = 0; i < n; i++ {

@@ -26,9 +26,9 @@ func TestChangeValue_Basic(t *testing.T) {
 
 func TestChangeValue_Stress(t *testing.T) {
 	var (
-		n      int64  = 1000000
-		gauge  *Gauge = NewGauge("gauge", 0)
-		result *Gauge = NewGauge("gauge", float64(n-1))
+		n      int64 = 1000000
+		gauge        = NewGauge("gauge", 0)
+		result       = NewGauge("gauge", float64(n-1))
 	)
 	var i int64
 	for i = 0; i < n; i++ {
