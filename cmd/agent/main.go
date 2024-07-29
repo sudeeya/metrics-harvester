@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -12,11 +12,9 @@ import (
 
 const serverAddress string = "http://localhost:8080"
 
-var (
-	pollInterval time.Duration = 2 * time.Second
-)
+var pollInterval time.Duration = 2 * time.Second
 
-var metrics = map[string]string{
+var typesOfMetrics = map[string]string{
 	"Alloc":         "gauge",
 	"BuckHashSys":   "gauge",
 	"Frees":         "gauge",
@@ -48,52 +46,78 @@ var metrics = map[string]string{
 	"TotalAlloc":    "gauge",
 }
 
-func countCall(f func(*runtime.MemStats)) func(*runtime.MemStats) int {
-	count := 0
-	return func(ms *runtime.MemStats) int {
+type Metrics struct {
+	memStats    *runtime.MemStats
+	pollCount   int64
+	countFunc   func(*runtime.MemStats) int64
+	randomValue float64
+}
+
+func NewMetrics(memStats *runtime.MemStats) *Metrics {
+	return &Metrics{
+		memStats:  memStats,
+		countFunc: countCall(runtime.ReadMemStats),
+	}
+}
+
+func countCall(f func(*runtime.MemStats)) func(*runtime.MemStats) int64 {
+	count := int64(0)
+	return func(ms *runtime.MemStats) int64 {
 		count++
 		f(ms)
 		return count
 	}
 }
 
-func formPath(metricType, metricName, metricValue string) string {
-	return fmt.Sprintf("%s/update/%s/%s/%s",
-		serverAddress, metricType, metricName, metricValue)
+func (m *Metrics) Update() {
+	m.pollCount = m.countFunc(m.memStats)
+	m.randomValue = rand.Float64()
 }
 
 func main() {
 	var (
-		memStats          runtime.MemStats
-		client            = &http.Client{}
-		countReadMemStats = countCall(runtime.ReadMemStats)
-		pollCount         int
+		memStats runtime.MemStats
+		client   = &http.Client{}
+		metrics  = NewMetrics(&memStats)
 	)
 	for {
-		for i := 0; i < 5; i++ {
-			time.Sleep(pollInterval)
-			pollCount = countReadMemStats(&memStats)
+		conductPollCycle(metrics)
+		sendMetrics(metrics, client)
+	}
+}
+
+func conductPollCycle(metrics *Metrics) {
+	for i := 0; i < 5; i++ {
+		time.Sleep(pollInterval)
+		metrics.Update()
+	}
+}
+
+func sendMetrics(metrics *Metrics, client *http.Client) {
+	for metricName, metricType := range typesOfMetrics {
+		var metricValue string
+		switch metricName {
+		case "PollCount":
+			metricValue = fmt.Sprintf("%v", metrics.pollCount)
+		case "RandomValue":
+			metricValue = fmt.Sprintf("%v", metrics.randomValue)
+		default:
+			metricValue = reflect.ValueOf(metrics.memStats).FieldByName(metricName).String()
 		}
-		for metricName, metricType := range metrics {
-			var metricValue string
-			switch metricName {
-			case "PollCount":
-				metricValue = fmt.Sprintf("%v", pollCount)
-			case "RandomValue":
-				metricValue = fmt.Sprintf("%v", rand.Float64())
-			default:
-				metricValue = reflect.ValueOf(memStats).FieldByName(metricName).String()
-			}
-			path := formPath(metricType, metricName, metricValue)
-			response, err := client.Post(path, "text/plain", nil)
-			if err != nil {
-				fmt.Println(err)
-			}
-			_, err = io.Copy(io.Discard, response.Body)
-			response.Body.Close()
-			if err != nil {
-				fmt.Println(err)
-			}
+		path := formPath(metricType, metricName, metricValue)
+		response, err := client.Post(path, "text/plain", nil)
+		if err != nil {
+			panic(err)
+		}
+		defer response.Body.Close()
+		_, err = io.Copy(io.Discard, response.Body)
+		if err != nil {
+			panic(err)
 		}
 	}
+}
+
+func formPath(metricType, metricName, metricValue string) string {
+	return fmt.Sprintf("%s/update/%s/%s/%s",
+		serverAddress, metricType, metricName, metricValue)
 }
