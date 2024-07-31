@@ -37,7 +37,7 @@ func CreateGetMetricHandler(router *router.Router) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("content-type", "text/plain")
-			w.Write([]byte(metric.GetName() + ": " + metric.GetValue()))
+			w.Write([]byte(metric.GetValue()))
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
