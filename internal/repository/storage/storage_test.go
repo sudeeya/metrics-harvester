@@ -94,3 +94,57 @@ func TestPutCounter(t *testing.T) {
 		require.EqualValues(t, test.ms, test.result)
 	}
 }
+
+func TestGetMetric_NoError(t *testing.T) {
+	var (
+		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
+			"gauge": metrics.NewGauge("gauge", 12.12),
+		}}
+		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
+			"counter": metrics.NewCounter("counter", 12),
+			"dummy":   metrics.NewCounter("dummy", -1),
+		}}
+	)
+	tests := []struct {
+		ms     *MemStorage
+		name   string
+		result metrics.Metric
+	}{
+		{
+			ms:     ms1,
+			name:   "gauge",
+			result: metrics.NewGauge("gauge", 12.12),
+		},
+		{
+			ms:     ms2,
+			name:   "counter",
+			result: metrics.NewCounter("counter", 12),
+		},
+	}
+	for _, test := range tests {
+		metric, err := test.ms.GetMetric(test.name)
+		require.Nil(t, err)
+		require.EqualValues(t, metric, test.result)
+	}
+}
+
+func TestGetMetric_Error(t *testing.T) {
+	var (
+		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
+			"counter": metrics.NewCounter("counter", 12),
+		}}
+	)
+	tests := []struct {
+		ms   *MemStorage
+		name string
+	}{
+		{
+			ms:   ms1,
+			name: "gauge",
+		},
+	}
+	for _, test := range tests {
+		_, err := test.ms.GetMetric(test.name)
+		require.NotNil(t, err)
+	}
+}
