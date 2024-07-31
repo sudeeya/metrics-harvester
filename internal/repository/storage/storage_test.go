@@ -9,13 +9,13 @@ import (
 
 func TestPutGauge(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]any{
+		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
 			"gauge": metrics.NewGauge("gauge", 12),
 		}}
-		ms2 = &MemStorage{metrics: map[string]any{
+		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
 			"gauge": metrics.NewGauge("gauge", 12.12),
 		}}
-		ms3 = &MemStorage{metrics: map[string]any{
+		ms3 = &MemStorage{metrics: map[string]metrics.Metric{
 			"gauge": metrics.NewGauge("gauge", 12.12),
 			"dummy": metrics.NewGauge("dummy", -1),
 		}}
@@ -53,13 +53,13 @@ func TestPutGauge(t *testing.T) {
 
 func TestPutCounter(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]any{
+		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
 			"counter": metrics.NewCounter("counter", 12),
 		}}
-		ms2 = &MemStorage{metrics: map[string]any{
+		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
 			"counter": metrics.NewCounter("counter", 24),
 		}}
-		ms3 = &MemStorage{metrics: map[string]any{
+		ms3 = &MemStorage{metrics: map[string]metrics.Metric{
 			"counter": metrics.NewCounter("counter", 24),
 			"dummy":   metrics.NewCounter("dummy", -1),
 		}}
