@@ -1,27 +1,18 @@
 package router
 
 import (
-	"net/http"
-
+	"github.com/go-chi/chi/v5"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
 )
 
 type Router struct {
-	repository repo.Repository
-	mux        *http.ServeMux
+	chi.Router
+	repo.Repository
 }
 
 func NewRouter(repository repo.Repository) *Router {
 	return &Router{
-		repository: repository,
-		mux:        http.NewServeMux(),
+		Router:     chi.NewRouter(),
+		Repository: repository,
 	}
-}
-
-func (router *Router) HandleFunc(pattern string, handler func(w http.ResponseWriter, r *http.Request)) {
-	router.mux.HandleFunc(pattern, handler)
-}
-
-func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	router.mux.ServeHTTP(w, r)
 }

@@ -3,59 +3,39 @@ package handlers
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
-	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"github.com/go-chi/chi/v5"
+	"github.com/sudeeya/metrics-harvester/internal/router"
 )
 
-func CreateGaugeHandler(repository repo.Repository) http.HandlerFunc {
+func CreateMetricHandler(router *router.Router) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			path := r.URL.Path[len("/update/gauge/"):]
-			splitPath := strings.Split(path, "/")
-			if splitPath[0] == "" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			} else if len(splitPath) != 2 {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			metric, err := strconv.ParseFloat(splitPath[1], 64)
+		var (
+			metricType  = chi.URLParam(r, "metricType")
+			metricName  = chi.URLParam(r, "metricName")
+			metricValue = chi.URLParam(r, "metricValue")
+		)
+		switch metricType {
+		case "gauge":
+			metric, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			repository.PutGauge(splitPath[0], metric)
+			router.PutGauge(metricName, metric)
 			w.Header().Set("content-type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}
-}
-
-func CreateCounterHandler(repository repo.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			path := r.URL.Path[len("/update/counter/"):]
-			splitPath := strings.Split(path, "/")
-			if splitPath[0] == "" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			} else if len(splitPath) != 2 {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			metric, err := strconv.ParseInt(splitPath[1], 0, 64)
+		case "counter":
+			metric, err := strconv.ParseInt(metricValue, 0, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			repository.PutCounter(splitPath[0], metric)
+			router.PutCounter(metricName, metric)
 			w.Header().Set("content-type", "text/plain")
 			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
 }
