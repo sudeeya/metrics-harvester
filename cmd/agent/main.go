@@ -102,7 +102,7 @@ func sendMetrics(metrics *Metrics, client *http.Client) {
 		case "RandomValue":
 			metricValue = fmt.Sprintf("%v", metrics.randomValue)
 		default:
-			metricValue = reflect.ValueOf(*metrics.memStats).FieldByName(metricName).String()
+			metricValue = fmt.Sprintf("%v", reflect.ValueOf(*metrics.memStats).FieldByName(metricName).Interface())
 		}
 		path := formPath(metricType, metricName, metricValue)
 		response, err := client.Post(path, "text/plain", nil)

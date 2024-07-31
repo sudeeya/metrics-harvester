@@ -10,9 +10,23 @@ import (
 )
 
 func main() {
-	memStorage := storage.NewMemStorage()
-	router := router.NewRouter(memStorage)
-	metricHandler := handlers.CreateMetricHandler(router)
+	var (
+		memStorage           = storage.NewMemStorage()
+		router               = router.NewRouter(memStorage)
+		getAllMetricsHandler = handlers.CreateGetAllMetricsHandler(router)
+		getMetricHandler     = handlers.CreateGetMetricHandler(router)
+		postMetricHandler    = handlers.CreatePostMetricHandler(router)
+	)
+	router.Get("/", getAllMetricsHandler)
+	router.Route("/value", func(r chi.Router) {
+		r.Get("/", http.NotFound)
+		r.Route("/{metricType}", func(r chi.Router) {
+			r.Get("/", http.NotFound)
+			r.Route("/{metricName}", func(r chi.Router) {
+				r.Get("/", getMetricHandler)
+			})
+		})
+	})
 	router.Post("/", http.NotFound)
 	router.Route("/update", func(r chi.Router) {
 		r.Post("/", handlers.BadRequest)
@@ -21,7 +35,7 @@ func main() {
 			r.Route("/{metricName}", func(r chi.Router) {
 				r.Post("/", handlers.BadRequest)
 				r.Route("/{metricValue}", func(r chi.Router) {
-					r.Post("/", metricHandler)
+					r.Post("/", postMetricHandler)
 				})
 			})
 		})

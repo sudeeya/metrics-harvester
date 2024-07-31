@@ -2,6 +2,8 @@ package storage
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/sudeeya/metrics-harvester/internal/repository/metrics"
 )
@@ -40,11 +42,14 @@ func (ms *MemStorage) GetMetric(name string) (metrics.Metric, error) {
 }
 
 func (ms *MemStorage) GetAllMetrics() []metrics.Metric {
-	metrics := make([]metrics.Metric, len(ms.metrics))
+	allMetrics := make([]metrics.Metric, len(ms.metrics))
 	i := 0
 	for _, value := range ms.metrics {
-		metrics[i] = value
+		allMetrics[i] = value
 		i++
 	}
-	return metrics
+	slices.SortFunc(allMetrics, func(a, b metrics.Metric) int {
+		return strings.Compare(a.GetName(), b.GetName())
+	})
+	return allMetrics
 }
