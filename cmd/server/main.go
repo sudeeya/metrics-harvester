@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -8,6 +9,14 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"github.com/sudeeya/metrics-harvester/internal/router"
 )
+
+var (
+	serverAddress *string
+)
+
+func init() {
+	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port (default: localhost:8080)")
+}
 
 func main() {
 	var (
@@ -17,6 +26,7 @@ func main() {
 		getMetricHandler     = handlers.CreateGetMetricHandler(router)
 		postMetricHandler    = handlers.CreatePostMetricHandler(router)
 	)
+	flag.Parse()
 	router.Get("/", getAllMetricsHandler)
 	router.Route("/value", func(r chi.Router) {
 		r.Get("/", http.NotFound)
@@ -40,7 +50,7 @@ func main() {
 			})
 		})
 	})
-	err := http.ListenAndServe(":8080", router)
+	err := http.ListenAndServe(*serverAddress, router)
 	if err != nil {
 		panic(err)
 	}
