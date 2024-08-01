@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
@@ -15,7 +16,11 @@ var (
 )
 
 func init() {
-	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+	address, ok := os.LookupEnv("ADDRESS")
+	if !ok {
+		serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+	}
+	*serverAddress = address
 }
 
 func main() {
