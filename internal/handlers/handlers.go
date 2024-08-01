@@ -18,7 +18,9 @@ func CreateGetAllMetricsHandler(router *router.Router) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("content-type", "text/plain")
-		w.Write([]byte(strings.Join(response, "\n")))
+		if _, err := w.Write([]byte(strings.Join(response, "\n"))); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -37,7 +39,9 @@ func CreateGetMetricHandler(router *router.Router) http.HandlerFunc {
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("content-type", "text/plain")
-			w.Write([]byte(metric.GetValue()))
+			if _, err := w.Write([]byte(metric.GetValue())); err != nil {
+				panic(err)
+			}
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
