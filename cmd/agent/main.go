@@ -80,26 +80,28 @@ func (m *Metrics) Update() {
 }
 
 func init() {
+	pollInterval = flag.Int64("p", 2, "Polling interval in seconds")
+	reportInterval = flag.Int64("r", 10, "Report interval in seconds")
+	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
 	pollIntervalString, ok := os.LookupEnv("POLL_INTERVAL")
-	if !ok {
-		pollInterval = flag.Int64("p", 2, "Polling interval in seconds")
-	} else if _, err := strconv.ParseInt(pollIntervalString, 0, 64); err != nil {
-		panic(err)
-	} else {
-		*pollInterval, _ = strconv.ParseInt(pollIntervalString, 0, 0)
+	if ok {
+		pollIntervalValue, err := strconv.ParseInt(pollIntervalString, 0, 64)
+		if err != nil {
+			panic(err)
+		} else {
+			pollInterval = &pollIntervalValue
+		}
 	}
 	reportIntervalString, ok := os.LookupEnv("REPORT_INTERVAL")
-	if !ok {
-		reportInterval = flag.Int64("r", 10, "Report interval in seconds")
-	} else if _, err := strconv.ParseInt(reportIntervalString, 0, 64); err != nil {
-		panic(err)
-	} else {
-		*reportInterval, _ = strconv.ParseInt(pollIntervalString, 0, 0)
+	if ok {
+		reportIntervalValue, err := strconv.ParseInt(reportIntervalString, 0, 64)
+		if err != nil {
+			panic(err)
+		} else {
+			reportInterval = &reportIntervalValue
+		}
 	}
-	address, ok := os.LookupEnv("ADDRESS")
-	if !ok {
-		serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
-	} else {
+	if address, ok := os.LookupEnv("ADDRESS"); ok {
 		serverAddress = &address
 	}
 }
