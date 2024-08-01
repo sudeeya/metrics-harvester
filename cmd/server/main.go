@@ -19,8 +19,9 @@ func init() {
 	address, ok := os.LookupEnv("ADDRESS")
 	if !ok {
 		serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+	} else {
+		serverAddress = &address
 	}
-	*serverAddress = address
 }
 
 func main() {

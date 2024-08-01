@@ -6,14 +6,16 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"time"
 )
 
 var (
-	pollInterval   *int
-	reportInterval *int
+	pollInterval   *int64
+	reportInterval *int64
 	serverAddress  *string
 )
 
@@ -78,9 +80,28 @@ func (m *Metrics) Update() {
 }
 
 func init() {
-	pollInterval = flag.Int("p", 2, "Polling interval in seconds")
-	reportInterval = flag.Int("r", 10, "Report interval in seconds")
-	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+	pollIntervalString, ok := os.LookupEnv("POLL_INTERVAL")
+	if !ok {
+		pollInterval = flag.Int64("p", 2, "Polling interval in seconds")
+	} else if _, err := strconv.ParseInt(pollIntervalString, 0, 64); err != nil {
+		panic(err)
+	} else {
+		*pollInterval, _ = strconv.ParseInt(pollIntervalString, 0, 0)
+	}
+	reportIntervalString, ok := os.LookupEnv("REPORT_INTERVAL")
+	if !ok {
+		reportInterval = flag.Int64("r", 10, "Report interval in seconds")
+	} else if _, err := strconv.ParseInt(reportIntervalString, 0, 64); err != nil {
+		panic(err)
+	} else {
+		*reportInterval, _ = strconv.ParseInt(pollIntervalString, 0, 0)
+	}
+	address, ok := os.LookupEnv("ADDRESS")
+	if !ok {
+		serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+	} else {
+		serverAddress = &address
+	}
 }
 
 func main() {
@@ -97,7 +118,8 @@ func main() {
 }
 
 func conductPollCycle(metrics *Metrics) {
-	for i := 0; i < *reportInterval / *pollInterval; i++ {
+	var i int64
+	for i = 0; i < *reportInterval / *pollInterval; i++ {
 		time.Sleep(time.Duration(*pollInterval) * time.Second)
 		metrics.Update()
 	}
