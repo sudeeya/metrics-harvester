@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port (default: localhost:8080)")
+	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
 }
 
 func main() {

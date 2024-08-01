@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -10,9 +11,11 @@ import (
 	"time"
 )
 
-const serverAddress string = "http://localhost:8080"
-
-var pollInterval time.Duration = 2 * time.Second
+var (
+	pollInterval   *int
+	reportInterval *int
+	serverAddress  *string
+)
 
 var typesOfMetrics = map[string]string{
 	"Alloc":         "gauge",
@@ -74,12 +77,19 @@ func (m *Metrics) Update() {
 	m.randomValue = rand.Float64()
 }
 
+func init() {
+	pollInterval = flag.Int("p", 2, "Polling interval in seconds")
+	reportInterval = flag.Int("r", 10, "Report interval in seconds")
+	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
+}
+
 func main() {
 	var (
 		memStats runtime.MemStats
 		client   = &http.Client{}
 		metrics  = NewMetrics(&memStats)
 	)
+	flag.Parse()
 	for {
 		conductPollCycle(metrics)
 		sendMetrics(metrics, client)
@@ -87,8 +97,8 @@ func main() {
 }
 
 func conductPollCycle(metrics *Metrics) {
-	for i := 0; i < 5; i++ {
-		time.Sleep(pollInterval)
+	for i := 0; i < *reportInterval / *pollInterval; i++ {
+		time.Sleep(time.Duration(*pollInterval) * time.Second)
 		metrics.Update()
 	}
 }
@@ -119,5 +129,5 @@ func sendMetrics(metrics *Metrics, client *http.Client) {
 
 func formPath(metricType, metricName, metricValue string) string {
 	return fmt.Sprintf("%s/update/%s/%s/%s",
-		serverAddress, metricType, metricName, metricValue)
+		*serverAddress, metricType, metricName, metricValue)
 }
