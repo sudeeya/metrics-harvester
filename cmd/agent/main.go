@@ -114,8 +114,8 @@ func sendMetrics(metrics *Metrics, client *http.Client) {
 		default:
 			metricValue = fmt.Sprintf("%v", reflect.ValueOf(*metrics.memStats).FieldByName(metricName).Interface())
 		}
-		path := formPath(metricType, metricName, metricValue)
-		response, err := client.Post(path, "text/plain", nil)
+		url := formURL(metricType, metricName, metricValue)
+		response, err := client.Post(url, "text/plain", nil)
 		if err != nil {
 			panic(err)
 		}
@@ -127,7 +127,7 @@ func sendMetrics(metrics *Metrics, client *http.Client) {
 	}
 }
 
-func formPath(metricType, metricName, metricValue string) string {
-	return fmt.Sprintf("%s/update/%s/%s/%s",
+func formURL(metricType, metricName, metricValue string) string {
+	return fmt.Sprintf("http://%s/update/%s/%s/%s",
 		*serverAddress, metricType, metricName, metricValue)
 }
