@@ -1,10 +1,8 @@
 package main
 
 import (
-	"flag"
 	"net/http"
 
-	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
@@ -12,14 +10,11 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/server"
 )
 
-var cfg server.Config
-
 func main() {
-	if err := env.Parse(&cfg); err != nil {
+	cfg, err := server.NewConfig()
+	if err != nil {
 		panic(err)
 	}
-	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
-	flag.Parse()
 	var (
 		memStorage           = storage.NewMemStorage()
 		router               = router.NewRouter(memStorage)
@@ -50,8 +45,7 @@ func main() {
 			})
 		})
 	})
-	err := http.ListenAndServe(cfg.Address, router)
-	if err != nil {
+	if err := http.ListenAndServe(cfg.Address, router); err != nil {
 		panic(err)
 	}
 }
