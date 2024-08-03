@@ -6,18 +6,15 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
-	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"time"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/sudeeya/metrics-harvester/internal/agent"
 )
 
-var (
-	pollInterval   *int64
-	reportInterval *int64
-	serverAddress  *string
-)
+var cfg agent.Config
 
 var typesOfMetrics = map[string]string{
 	"Alloc":         "gauge",
@@ -79,34 +76,14 @@ func (m *Metrics) Update() {
 	m.randomValue = rand.Float64()
 }
 
-func init() {
-	pollInterval = flag.Int64("p", 2, "Polling interval in seconds")
-	reportInterval = flag.Int64("r", 10, "Report interval in seconds")
-	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
-	pollIntervalString, ok := os.LookupEnv("POLL_INTERVAL")
-	if ok {
-		pollIntervalValue, err := strconv.ParseInt(pollIntervalString, 0, 64)
-		if err != nil {
-			panic(err)
-		} else {
-			pollInterval = &pollIntervalValue
-		}
-	}
-	reportIntervalString, ok := os.LookupEnv("REPORT_INTERVAL")
-	if ok {
-		reportIntervalValue, err := strconv.ParseInt(reportIntervalString, 0, 64)
-		if err != nil {
-			panic(err)
-		} else {
-			reportInterval = &reportIntervalValue
-		}
-	}
-	if address, ok := os.LookupEnv("ADDRESS"); ok {
-		serverAddress = &address
-	}
-}
-
 func main() {
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
+	flag.Int64Var(&cfg.PollInterval, "p", cfg.PollInterval, "Polling interval in seconds")
+	flag.Int64Var(&cfg.ReportInterval, "r", cfg.ReportInterval, "Report interval in seconds")
+	flag.Parse()
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
 	var (
 		memStats runtime.MemStats
 		client   = &http.Client{}
@@ -121,8 +98,8 @@ func main() {
 
 func conductPollCycle(metrics *Metrics) {
 	var i int64
-	for i = 0; i < *reportInterval / *pollInterval; i++ {
-		time.Sleep(time.Duration(*pollInterval) * time.Second)
+	for i = 0; i < cfg.ReportInterval/cfg.PollInterval; i++ {
+		time.Sleep(time.Duration(cfg.PollInterval) * time.Second)
 		metrics.Update()
 	}
 }
@@ -153,5 +130,5 @@ func sendMetrics(metrics *Metrics, client *http.Client) {
 
 func formURL(metricType, metricName, metricValue string) string {
 	return fmt.Sprintf("http://%s/update/%s/%s/%s",
-		*serverAddress, metricType, metricName, metricValue)
+		cfg.Address, metricType, metricName, metricValue)
 }

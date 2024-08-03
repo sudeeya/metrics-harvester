@@ -3,26 +3,22 @@ package main
 import (
 	"flag"
 	"net/http"
-	"os"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"github.com/sudeeya/metrics-harvester/internal/router"
+	"github.com/sudeeya/metrics-harvester/internal/server"
 )
-
-var (
-	serverAddress *string
-)
-
-func init() {
-	serverAddress = flag.String("a", "localhost:8080", "Server IP address and port")
-	if address, ok := os.LookupEnv("ADDRESS"); ok {
-		serverAddress = &address
-	}
-}
 
 func main() {
+	var cfg server.Config
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
+	flag.Parse()
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
 	var (
 		memStorage           = storage.NewMemStorage()
 		router               = router.NewRouter(memStorage)
@@ -30,7 +26,6 @@ func main() {
 		getMetricHandler     = handlers.CreateGetMetricHandler(router)
 		postMetricHandler    = handlers.CreatePostMetricHandler(router)
 	)
-	flag.Parse()
 	router.Get("/", getAllMetricsHandler)
 	router.Route("/value", func(r chi.Router) {
 		r.Get("/", http.NotFound)
@@ -54,7 +49,7 @@ func main() {
 			})
 		})
 	})
-	err := http.ListenAndServe(*serverAddress, router)
+	err := http.ListenAndServe(cfg.Address, router)
 	if err != nil {
 		panic(err)
 	}
