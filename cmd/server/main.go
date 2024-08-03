@@ -12,13 +12,14 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/server"
 )
 
+var cfg server.Config
+
 func main() {
-	var cfg server.Config
-	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
-	flag.Parse()
 	if err := env.Parse(&cfg); err != nil {
 		panic(err)
 	}
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
+	flag.Parse()
 	var (
 		memStorage           = storage.NewMemStorage()
 		router               = router.NewRouter(memStorage)

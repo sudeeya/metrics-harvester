@@ -77,13 +77,13 @@ func (m *Metrics) Update() {
 }
 
 func main() {
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "Server IP address and port")
 	flag.Int64Var(&cfg.PollInterval, "p", cfg.PollInterval, "Polling interval in seconds")
 	flag.Int64Var(&cfg.ReportInterval, "r", cfg.ReportInterval, "Report interval in seconds")
 	flag.Parse()
-	if err := env.Parse(&cfg); err != nil {
-		panic(err)
-	}
 	var (
 		memStats runtime.MemStats
 		client   = &http.Client{}
