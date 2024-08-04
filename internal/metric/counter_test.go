@@ -20,7 +20,7 @@ func TestIncreaseValue_Basic(t *testing.T) {
 	}
 	for _, test := range tests {
 		test.counter.IncreaseValue(test.additive)
-		require.EqualValues(t, test.counter, test.result)
+		require.EqualValues(t, test.result, test.counter)
 	}
 }
 
@@ -34,5 +34,5 @@ func TestIncreaseValue_Stress(t *testing.T) {
 	for i = 0; i < n; i++ {
 		counter.IncreaseValue(int64(1))
 	}
-	require.EqualValues(t, counter, result)
+	require.EqualValues(t, result, counter)
 }

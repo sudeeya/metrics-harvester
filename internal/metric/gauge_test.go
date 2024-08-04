@@ -20,7 +20,7 @@ func TestChangeValue_Basic(t *testing.T) {
 	}
 	for _, test := range tests {
 		test.gauge.ChangeValue(test.newValue)
-		require.EqualValues(t, test.gauge, test.result)
+		require.EqualValues(t, test.result, test.gauge)
 	}
 }
 
@@ -34,5 +34,5 @@ func TestChangeValue_Stress(t *testing.T) {
 	for i = 0; i < n; i++ {
 		gauge.ChangeValue(float64(i))
 	}
-	require.EqualValues(t, gauge, result)
+	require.EqualValues(t, result, gauge)
 }

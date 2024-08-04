@@ -47,7 +47,7 @@ func TestPutGauge(t *testing.T) {
 	}
 	for _, test := range tests {
 		test.ms.PutGauge(test.name, test.value)
-		require.EqualValues(t, test.ms, test.result)
+		require.EqualValues(t, test.result, test.ms)
 	}
 }
 
@@ -91,7 +91,7 @@ func TestPutCounter(t *testing.T) {
 	}
 	for _, test := range tests {
 		test.ms.PutCounter(test.name, test.value)
-		require.EqualValues(t, test.ms, test.result)
+		require.EqualValues(t, test.result, test.ms)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestGetMetric_NoError(t *testing.T) {
 	for _, test := range tests {
 		metric, err := test.ms.GetMetric(test.name)
 		require.Nil(t, err)
-		require.EqualValues(t, metric, test.result)
+		require.EqualValues(t, test.result, metric)
 	}
 }
 
