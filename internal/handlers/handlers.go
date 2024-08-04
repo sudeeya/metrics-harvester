@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sudeeya/metrics-harvester/internal/router"
+	repo "github.com/sudeeya/metrics-harvester/internal/repository"
 )
 
-func CreateGetAllMetricsHandler(router *router.Router) http.HandlerFunc {
+func CreateGetAllMetricsHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		allMetrics := router.GetAllMetrics()
+		allMetrics := repository.GetAllMetrics()
 		response := make([]string, len(allMetrics))
 		for i, metric := range allMetrics {
 			response[i] = metric.GetName() + ": " + metric.GetValue()
@@ -24,7 +24,7 @@ func CreateGetAllMetricsHandler(router *router.Router) http.HandlerFunc {
 	}
 }
 
-func CreateGetMetricHandler(router *router.Router) http.HandlerFunc {
+func CreateGetMetricHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType = chi.URLParam(r, "metricType")
@@ -32,7 +32,7 @@ func CreateGetMetricHandler(router *router.Router) http.HandlerFunc {
 		)
 		switch metricType {
 		case "gauge", "counter":
-			metric, err := router.GetMetric(metricName)
+			metric, err := repository.GetMetric(metricName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -48,7 +48,7 @@ func CreateGetMetricHandler(router *router.Router) http.HandlerFunc {
 	}
 }
 
-func CreatePostMetricHandler(router *router.Router) http.HandlerFunc {
+func CreatePostMetricHandler(repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType  = chi.URLParam(r, "metricType")
@@ -62,7 +62,7 @@ func CreatePostMetricHandler(router *router.Router) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			router.PutGauge(metricName, metric)
+			repository.PutGauge(metricName, metric)
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("content-type", "text/plain")
 		case "counter":
@@ -71,7 +71,7 @@ func CreatePostMetricHandler(router *router.Router) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			router.PutCounter(metricName, metric)
+			repository.PutCounter(metricName, metric)
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("content-type", "text/plain")
 		default:
