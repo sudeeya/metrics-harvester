@@ -46,6 +46,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	}
 	for _, test := range tests {
 		response, body := testRequest(t, ts, "GET", "/")
+		defer response.Body.Close()
 		require.Equal(t, response.StatusCode, test.result.code)
 		require.Equal(t, body, test.result.body)
 	}
@@ -93,6 +94,7 @@ func TestGetMetricHandler(t *testing.T) {
 	}
 	for _, test := range tests {
 		response, body := testRequest(t, ts, "GET", test.path)
+		defer response.Body.Close()
 		require.Equal(t, test.result.code, response.StatusCode)
 		require.Equal(t, test.result.body, body)
 	}
@@ -146,6 +148,7 @@ func TestPostMetricHandler(t *testing.T) {
 	}
 	for _, test := range tests {
 		response, _ := testRequest(t, ts, "POST", test.path)
+		defer response.Body.Close()
 		require.Equal(t, test.result.code, response.StatusCode)
 	}
 }
