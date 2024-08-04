@@ -4,20 +4,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/sudeeya/metrics-harvester/internal/repository/metrics"
+	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
 func TestPutGauge(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
-			"gauge": metrics.NewGauge("gauge", 12),
+		ms1 = &MemStorage{metrics: map[string]metric.Metric{
+			"gauge": metric.NewGauge("gauge", 12),
 		}}
-		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
-			"gauge": metrics.NewGauge("gauge", 12.12),
+		ms2 = &MemStorage{metrics: map[string]metric.Metric{
+			"gauge": metric.NewGauge("gauge", 12.12),
 		}}
-		ms3 = &MemStorage{metrics: map[string]metrics.Metric{
-			"gauge": metrics.NewGauge("gauge", 12.12),
-			"dummy": metrics.NewGauge("dummy", -1),
+		ms3 = &MemStorage{metrics: map[string]metric.Metric{
+			"gauge": metric.NewGauge("gauge", 12.12),
+			"dummy": metric.NewGauge("dummy", -1),
 		}}
 	)
 	tests := []struct {
@@ -53,15 +53,15 @@ func TestPutGauge(t *testing.T) {
 
 func TestPutCounter(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
-			"counter": metrics.NewCounter("counter", 12),
+		ms1 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": metric.NewCounter("counter", 12),
 		}}
-		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
-			"counter": metrics.NewCounter("counter", 24),
+		ms2 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": metric.NewCounter("counter", 24),
 		}}
-		ms3 = &MemStorage{metrics: map[string]metrics.Metric{
-			"counter": metrics.NewCounter("counter", 24),
-			"dummy":   metrics.NewCounter("dummy", -1),
+		ms3 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": metric.NewCounter("counter", 24),
+			"dummy":   metric.NewCounter("dummy", -1),
 		}}
 	)
 	tests := []struct {
@@ -97,28 +97,28 @@ func TestPutCounter(t *testing.T) {
 
 func TestGetMetric_NoError(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
-			"gauge": metrics.NewGauge("gauge", 12.12),
+		ms1 = &MemStorage{metrics: map[string]metric.Metric{
+			"gauge": metric.NewGauge("gauge", 12.12),
 		}}
-		ms2 = &MemStorage{metrics: map[string]metrics.Metric{
-			"counter": metrics.NewCounter("counter", 12),
-			"dummy":   metrics.NewCounter("dummy", -1),
+		ms2 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": metric.NewCounter("counter", 12),
+			"dummy":   metric.NewCounter("dummy", -1),
 		}}
 	)
 	tests := []struct {
 		ms     *MemStorage
 		name   string
-		result metrics.Metric
+		result metric.Metric
 	}{
 		{
 			ms:     ms1,
 			name:   "gauge",
-			result: metrics.NewGauge("gauge", 12.12),
+			result: metric.NewGauge("gauge", 12.12),
 		},
 		{
 			ms:     ms2,
 			name:   "counter",
-			result: metrics.NewCounter("counter", 12),
+			result: metric.NewCounter("counter", 12),
 		},
 	}
 	for _, test := range tests {
@@ -130,8 +130,8 @@ func TestGetMetric_NoError(t *testing.T) {
 
 func TestGetMetric_Error(t *testing.T) {
 	var (
-		ms1 = &MemStorage{metrics: map[string]metrics.Metric{
-			"counter": metrics.NewCounter("counter", 12),
+		ms1 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": metric.NewCounter("counter", 12),
 		}}
 	)
 	tests := []struct {
