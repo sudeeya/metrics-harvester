@@ -7,9 +7,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"go.uber.org/zap"
 )
 
-func CreateGetAllMetricsHandler(repository repo.Repository) http.HandlerFunc {
+func CreateGetAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allMetrics := repository.GetAllMetrics()
 		response := make([]string, len(allMetrics))
@@ -19,12 +20,12 @@ func CreateGetAllMetricsHandler(repository repo.Repository) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("content-type", "text/plain")
 		if _, err := w.Write([]byte(strings.Join(response, "\n"))); err != nil {
-			panic(err)
+			logger.Error(err.Error())
 		}
 	}
 }
 
-func CreateGetMetricHandler(repository repo.Repository) http.HandlerFunc {
+func CreateGetMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType = chi.URLParam(r, "metricType")
@@ -34,13 +35,14 @@ func CreateGetMetricHandler(repository repo.Repository) http.HandlerFunc {
 		case "gauge", "counter":
 			metric, err := repository.GetMetric(metricName)
 			if err != nil {
+				logger.Error(err.Error())
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("content-type", "text/plain")
 			if _, err := w.Write([]byte(metric.GetValue())); err != nil {
-				panic(err)
+				logger.Error(err.Error())
 			}
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -48,7 +50,7 @@ func CreateGetMetricHandler(repository repo.Repository) http.HandlerFunc {
 	}
 }
 
-func CreatePostMetricHandler(repository repo.Repository) http.HandlerFunc {
+func CreatePostMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType  = chi.URLParam(r, "metricType")
@@ -59,6 +61,7 @@ func CreatePostMetricHandler(repository repo.Repository) http.HandlerFunc {
 		case "gauge":
 			metric, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
+				logger.Error(err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -68,6 +71,7 @@ func CreatePostMetricHandler(repository repo.Repository) http.HandlerFunc {
 		case "counter":
 			metric, err := strconv.ParseInt(metricValue, 0, 64)
 			if err != nil {
+				logger.Error(err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
