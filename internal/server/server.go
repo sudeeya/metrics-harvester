@@ -5,35 +5,40 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
+	log "github.com/sudeeya/metrics-harvester/internal/logger"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"go.uber.org/zap"
 )
 
 type Server struct {
 	cfg        *Config
+	logger     *zap.Logger
 	repository repo.Repository
-	router     chi.Router
+	handler    http.Handler
 }
 
-func NewServer(cfg *Config, repository repo.Repository) *Server {
+func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Server {
 	router := chi.NewRouter()
-	addRoutes(repository, router)
+	addRoutes(logger, repository, router)
+	handler := log.WithLogging(logger, router)
 	return &Server{
 		cfg:        cfg,
+		logger:     logger,
 		repository: repository,
-		router:     router,
+		handler:    handler,
 	}
 }
 
-func addRoutes(repository repo.Repository, router chi.Router) {
-	router.Get("/value/{metricType}/{metricName}", handlers.CreateGetMetricHandler(repository))
-	router.Get("/", handlers.CreateGetAllMetricsHandler(repository))
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.CreatePostMetricHandler(repository))
+func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
+	router.Get("/value/{metricType}/{metricName}", handlers.CreateGetMetricHandler(logger, repository))
+	router.Get("/", handlers.CreateGetAllMetricsHandler(logger, repository))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.CreatePostMetricHandler(logger, repository))
 	router.Post("/update/{metricType}/", http.NotFound)
 	router.Post("/", handlers.BadRequest)
 }
 
 func (s *Server) Run() {
-	if err := http.ListenAndServe(s.cfg.Address, s.router); err != nil {
-		panic(err)
+	if err := http.ListenAndServe(s.cfg.Address, s.handler); err != nil {
+		s.logger.Fatal(err.Error())
 	}
 }
