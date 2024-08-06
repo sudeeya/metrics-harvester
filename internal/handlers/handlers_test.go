@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
+	"go.uber.org/zap"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
@@ -25,7 +26,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 func TestGetAllMetricsHandler(t *testing.T) {
 	var (
 		ms = storage.NewMemStorage()
-		ts = httptest.NewServer(CreateGetAllMetricsHandler(ms))
+		l  = zap.NewNop()
+		ts = httptest.NewServer(CreateGetAllMetricsHandler(l, ms))
 	)
 	defer ts.Close()
 	ms.PutGauge("gauge", 12.12)
@@ -55,13 +57,14 @@ func TestGetAllMetricsHandler(t *testing.T) {
 func TestGetMetricHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()
+		l      = zap.NewNop()
 		router = chi.NewRouter()
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
 	ms.PutGauge("gauge", 12.12)
 	ms.PutCounter("counter", 12)
-	router.Get("/value/{metricType}/{metricName}", CreateGetMetricHandler(ms))
+	router.Get("/value/{metricType}/{metricName}", CreateGetMetricHandler(l, ms))
 	type result struct {
 		code int
 		body string
@@ -103,11 +106,12 @@ func TestGetMetricHandler(t *testing.T) {
 func TestPostMetricHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()
+		l      = zap.NewNop()
 		router = chi.NewRouter()
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", CreatePostMetricHandler(ms))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", CreatePostMetricHandler(l, ms))
 	type result struct {
 		code int
 	}
