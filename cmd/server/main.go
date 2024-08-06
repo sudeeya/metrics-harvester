@@ -6,6 +6,7 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"github.com/sudeeya/metrics-harvester/internal/server"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
@@ -13,7 +14,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger, err := zap.NewDevelopment()
+	logConfig := zap.NewDevelopmentConfig()
+	logConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	logger, err := logConfig.Build()
 	defer logger.Sync()
 	if err != nil {
 		log.Fatal(err)
