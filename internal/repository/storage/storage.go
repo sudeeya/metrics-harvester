@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -18,27 +17,24 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) PutGauge(name string, value float64) {
-	if _, ok := ms.metrics[name]; !ok {
-		ms.metrics[name] = metric.NewGauge(name, value)
-	} else {
-		ms.metrics[name].(*metric.Gauge).ChangeValue(value)
+func (ms *MemStorage) PutMetric(m metric.Metric) {
+	value, ok := ms.metrics[m.ID]
+	if !ok {
+		ms.metrics[m.ID] = m
+		return
 	}
+	switch m.MType {
+	case metric.Gauge:
+		value.Update(*m.Value)
+	case metric.Counter:
+		value.Update(*m.Delta)
+	}
+	ms.metrics[m.ID] = value
 }
 
-func (ms *MemStorage) PutCounter(name string, value int64) {
-	if _, ok := ms.metrics[name]; !ok {
-		ms.metrics[name] = metric.NewCounter(name, value)
-	} else {
-		ms.metrics[name].(*metric.Counter).IncreaseValue(value)
-	}
-}
-
-func (ms *MemStorage) GetMetric(name string) (metric.Metric, error) {
-	if _, ok := ms.metrics[name]; !ok {
-		return nil, fmt.Errorf("metric %s is missing", name)
-	}
-	return ms.metrics[name], nil
+func (ms *MemStorage) GetMetric(mName string) (metric.Metric, bool) {
+	m, ok := ms.metrics[mName]
+	return m, ok
 }
 
 func (ms *MemStorage) GetAllMetrics() []metric.Metric {
@@ -49,7 +45,7 @@ func (ms *MemStorage) GetAllMetrics() []metric.Metric {
 		i++
 	}
 	slices.SortFunc(allMetrics, func(a, b metric.Metric) int {
-		return strings.Compare(a.GetName(), b.GetName())
+		return strings.Compare(a.ID, b.ID)
 	})
 	return allMetrics
 }

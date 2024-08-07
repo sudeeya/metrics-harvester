@@ -8,7 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
+	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
+	"github.com/sudeeya/metrics-harvester/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -30,8 +32,8 @@ func TestGetAllMetricsHandler(t *testing.T) {
 		ts = httptest.NewServer(CreateGetAllMetricsHandler(l, ms))
 	)
 	defer ts.Close()
-	ms.PutGauge("gauge", 12.12)
-	ms.PutCounter("counter", 12)
+	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
+	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
 	type result struct {
 		code int
 		body string
@@ -62,8 +64,8 @@ func TestGetMetricHandler(t *testing.T) {
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	ms.PutGauge("gauge", 12.12)
-	ms.PutCounter("counter", 12)
+	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
+	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
 	router.Get("/value/{metricType}/{metricName}", CreateGetMetricHandler(l, ms))
 	type result struct {
 		code int
