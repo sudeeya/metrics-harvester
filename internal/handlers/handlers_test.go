@@ -79,7 +79,7 @@ func TestGetMetricHandler(t *testing.T) {
 			path: "/value/counter/counter",
 			result: result{
 				code: http.StatusOK,
-				body: "12",
+				body: "{\"id\":\"counter\",\"type\":\"counter\",\"delta\":12}\n",
 			},
 		},
 		{

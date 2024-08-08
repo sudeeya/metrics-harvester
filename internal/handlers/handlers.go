@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -30,8 +31,9 @@ func CreateGetAllMetricsHandler(logger *zap.Logger, repository repo.Repository) 
 func CreateGetMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			metricType = chi.URLParam(r, "metricType")
-			metricName = chi.URLParam(r, "metricName")
+			metricType  = chi.URLParam(r, "metricType")
+			metricName  = chi.URLParam(r, "metricName")
+			jsonEncoder = json.NewEncoder(w)
 		)
 		switch metricType {
 		case metric.Gauge, metric.Counter:
@@ -41,8 +43,8 @@ func CreateGetMetricHandler(logger *zap.Logger, repository repo.Repository) http
 				return
 			}
 			w.WriteHeader(http.StatusOK)
-			w.Header().Set("content-type", "text/plain")
-			if _, err := w.Write([]byte(m.GetValue())); err != nil {
+			w.Header().Set("content-type", "application/json")
+			if err := jsonEncoder.Encode(m); err != nil {
 				logger.Error(err.Error())
 			}
 		default:
@@ -57,6 +59,7 @@ func CreatePostMetricHandler(logger *zap.Logger, repository repo.Repository) htt
 			metricType  = chi.URLParam(r, "metricType")
 			metricName  = chi.URLParam(r, "metricName")
 			metricValue = chi.URLParam(r, "metricValue")
+			jsonEncoder = json.NewEncoder(w)
 		)
 		switch metricType {
 		case metric.Gauge:
@@ -68,7 +71,11 @@ func CreatePostMetricHandler(logger *zap.Logger, repository repo.Repository) htt
 			}
 			repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Value: &value})
 			w.WriteHeader(http.StatusOK)
-			w.Header().Set("content-type", "text/plain")
+			w.Header().Set("content-type", "application/json")
+			m, _ := repository.GetMetric(metricName)
+			if err := jsonEncoder.Encode(m); err != nil {
+				logger.Error(err.Error())
+			}
 		case metric.Counter:
 			delta, err := strconv.ParseInt(metricValue, 0, 64)
 			if err != nil {
@@ -78,7 +85,11 @@ func CreatePostMetricHandler(logger *zap.Logger, repository repo.Repository) htt
 			}
 			repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Delta: &delta})
 			w.WriteHeader(http.StatusOK)
-			w.Header().Set("content-type", "text/plain")
+			w.Header().Set("content-type", "application/json")
+			m, _ := repository.GetMetric(metricName)
+			if err := jsonEncoder.Encode(m); err != nil {
+				logger.Error(err.Error())
+			}
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}

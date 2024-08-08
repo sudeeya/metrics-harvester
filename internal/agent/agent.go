@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -37,16 +39,26 @@ func (a *Agent) Run() {
 
 func (a *Agent) SendMetrics(metrics *Metrics) {
 	for _, m := range metrics.Values {
-		url := formURL(a, m)
-		response, err := a.client.Post(url, "text/plain", nil)
-		if err != nil {
-			panic(err)
-		}
-		defer response.Body.Close()
-		_, err = io.Copy(io.Discard, response.Body)
-		if err != nil {
-			panic(err)
-		}
+		a.sendMetric(m)
+	}
+}
+
+func (a *Agent) sendMetric(m *metric.Metric) {
+	var (
+		url  = formURL(a, m)
+		body bytes.Buffer
+	)
+	if err := json.NewEncoder(&body).Encode(*m); err != nil {
+		panic(err)
+	}
+	response, err := a.client.Post(url, "application/json", &body)
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+	_, err = io.Copy(io.Discard, response.Body)
+	if err != nil {
+		panic(err)
 	}
 }
 
