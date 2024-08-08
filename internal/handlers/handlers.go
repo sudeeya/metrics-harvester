@@ -104,9 +104,14 @@ func NewPostJSONMetricHandler(logger *zap.Logger, repository repo.Repository) ht
 			w.Header().Set("content-type", "application/json")
 			return
 		}
+		m, ok := repository.GetMetric(m.ID)
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			w.Header().Set("content-type", "application/json")
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("content-type", "application/json")
-		m, _ = repository.GetMetric(m.ID)
 		if err := json.NewEncoder(w).Encode(m); err != nil {
 			logger.Error(err.Error())
 		}
