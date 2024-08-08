@@ -29,7 +29,7 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	var (
 		ms = storage.NewMemStorage()
 		l  = zap.NewNop()
-		ts = httptest.NewServer(CreateGetAllMetricsHandler(l, ms))
+		ts = httptest.NewServer(NewGetAllMetricsHandler(l, ms))
 	)
 	defer ts.Close()
 	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
@@ -66,7 +66,7 @@ func TestGetMetricHandler(t *testing.T) {
 	defer ts.Close()
 	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
 	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
-	router.Get("/value/{metricType}/{metricName}", CreateGetMetricHandler(l, ms))
+	router.Get("/value/{metricType}/{metricName}", NewGetMetricHandler(l, ms))
 	type result struct {
 		code int
 		body string
@@ -79,7 +79,7 @@ func TestGetMetricHandler(t *testing.T) {
 			path: "/value/counter/counter",
 			result: result{
 				code: http.StatusOK,
-				body: "{\"id\":\"counter\",\"type\":\"counter\",\"delta\":12}\n",
+				body: "12",
 			},
 		},
 		{
@@ -113,7 +113,7 @@ func TestPostMetricHandler(t *testing.T) {
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", CreatePostMetricHandler(l, ms))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", NewPostMetricHandler(l, ms))
 	type result struct {
 		code int
 	}
