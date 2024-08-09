@@ -114,7 +114,7 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 		}
 		m, ok := repository.GetMetric(m.ID)
 		if !ok {
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		w.Header().Set("content-type", "application/json")
