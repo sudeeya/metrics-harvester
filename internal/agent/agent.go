@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math/rand/v2"
 	"net/http"
@@ -45,7 +44,7 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 
 func (a *Agent) sendMetric(m *metric.Metric) {
 	var (
-		url  = formURL(a, m)
+		url  = a.cfg.Address + "/update/"
 		body bytes.Buffer
 	)
 	if err := json.NewEncoder(&body).Encode(*m); err != nil {
@@ -60,10 +59,6 @@ func (a *Agent) sendMetric(m *metric.Metric) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func formURL(a *Agent, m *metric.Metric) string {
-	return fmt.Sprintf("%s/update/%s/%s/%s", a.cfg.Address, m.MType, m.ID, m.GetValue())
 }
 
 type Metrics struct {

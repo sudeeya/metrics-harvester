@@ -30,11 +30,12 @@ func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Ser
 }
 
 func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
-	router.Get("/value/{metricType}/{metricName}", handlers.NewGetMetricHandler(logger, repository))
-	router.Get("/", handlers.NewGetAllMetricsHandler(logger, repository))
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewPostMetricHandler(logger, repository))
+	router.Get("/value/{metricType}/{metricName}", handlers.NewValueHandler(logger, repository))
+	router.Get("/", handlers.NewAllMetricsHandler(logger, repository))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewUpdateHandler(logger, repository))
 	router.Post("/update/{metricType}/", http.NotFound)
-	router.Post("/value/", handlers.NewPostJSONMetricHandler(logger, repository))
+	router.Post("/update/", handlers.NewJSONUpdateHandler(logger, repository))
+	router.Post("/value/", handlers.NewJSONValueHandler(logger, repository))
 	router.Post("/", handlers.BadRequest)
 }
 

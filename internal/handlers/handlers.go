@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewGetAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allMetrics := repository.GetAllMetrics()
 		response := make([]string, len(allMetrics))
@@ -28,7 +28,7 @@ func NewGetAllMetricsHandler(logger *zap.Logger, repository repo.Repository) htt
 	}
 }
 
-func NewGetMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType = chi.URLParam(r, "metricType")
@@ -52,13 +52,12 @@ func NewGetMetricHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 	}
 }
 
-func NewPostMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType  = chi.URLParam(r, "metricType")
 			metricName  = chi.URLParam(r, "metricName")
 			metricValue = chi.URLParam(r, "metricValue")
-			jsonEncoder = json.NewEncoder(w)
 		)
 		switch metricType {
 		case metric.Gauge:
@@ -70,11 +69,7 @@ func NewPostMetricHandler(logger *zap.Logger, repository repo.Repository) http.H
 			}
 			repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Value: &value})
 			w.WriteHeader(http.StatusOK)
-			w.Header().Set("content-type", "application/json")
-			m, _ := repository.GetMetric(metricName)
-			if err := jsonEncoder.Encode(m); err != nil {
-				logger.Error(err.Error())
-			}
+			w.Header().Set("content-type", "text/plain")
 		case metric.Counter:
 			delta, err := strconv.ParseInt(metricValue, 0, 64)
 			if err != nil {
@@ -84,30 +79,42 @@ func NewPostMetricHandler(logger *zap.Logger, repository repo.Repository) http.H
 			}
 			repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Delta: &delta})
 			w.WriteHeader(http.StatusOK)
-			w.Header().Set("content-type", "application/json")
-			m, _ := repository.GetMetric(metricName)
-			if err := jsonEncoder.Encode(m); err != nil {
-				logger.Error(err.Error())
-			}
+			w.Header().Set("content-type", "text/plain")
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
 }
 
-func NewPostJSONMetricHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m metric.Metric
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 			logger.Error(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
-			w.Header().Set("content-type", "application/json")
+			return
+		}
+		repository.PutMetric(m)
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("content-type", "application/json")
+		m, _ = repository.GetMetric(m.ID)
+		if err := json.NewEncoder(w).Encode(m); err != nil {
+			logger.Error(err.Error())
+		}
+	}
+}
+
+func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m metric.Metric
+		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		m, ok := repository.GetMetric(m.ID)
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
-			w.Header().Set("content-type", "application/json")
 			return
 		}
 		w.WriteHeader(http.StatusOK)
