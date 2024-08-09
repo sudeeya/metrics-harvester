@@ -8,7 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
+	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
+	"github.com/sudeeya/metrics-harvester/internal/utils"
+	"go.uber.org/zap"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
@@ -22,14 +25,15 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	return response, string(body)
 }
 
-func TestGetAllMetricsHandler(t *testing.T) {
+func TestAllMetricsHandler(t *testing.T) {
 	var (
 		ms = storage.NewMemStorage()
-		ts = httptest.NewServer(CreateGetAllMetricsHandler(ms))
+		l  = zap.NewNop()
+		ts = httptest.NewServer(NewAllMetricsHandler(l, ms))
 	)
 	defer ts.Close()
-	ms.PutGauge("gauge", 12.12)
-	ms.PutCounter("counter", 12)
+	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
+	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
 	type result struct {
 		code int
 		body string
@@ -52,16 +56,17 @@ func TestGetAllMetricsHandler(t *testing.T) {
 	}
 }
 
-func TestGetMetricHandler(t *testing.T) {
+func TestValueHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()
+		l      = zap.NewNop()
 		router = chi.NewRouter()
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	ms.PutGauge("gauge", 12.12)
-	ms.PutCounter("counter", 12)
-	router.Get("/value/{metricType}/{metricName}", CreateGetMetricHandler(ms))
+	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
+	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
+	router.Get("/value/{metricType}/{metricName}", NewValueHandler(l, ms))
 	type result struct {
 		code int
 		body string
@@ -100,14 +105,15 @@ func TestGetMetricHandler(t *testing.T) {
 	}
 }
 
-func TestPostMetricHandler(t *testing.T) {
+func TestUpdateHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()
+		l      = zap.NewNop()
 		router = chi.NewRouter()
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", CreatePostMetricHandler(ms))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", NewUpdateHandler(l, ms))
 	type result struct {
 		code int
 	}
