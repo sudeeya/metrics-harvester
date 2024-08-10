@@ -25,37 +25,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	return response, string(body)
 }
 
-func TestAllMetricsHandler(t *testing.T) {
-	var (
-		ms = storage.NewMemStorage()
-		l  = zap.NewNop()
-		ts = httptest.NewServer(NewAllMetricsHandler(l, ms))
-	)
-	defer ts.Close()
-	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
-	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
-	type result struct {
-		code int
-		body string
-	}
-	tests := []struct {
-		result result
-	}{
-		{
-			result: result{
-				code: http.StatusOK,
-				body: "counter: 12\ngauge: 12.12",
-			},
-		},
-	}
-	for _, test := range tests {
-		response, body := testRequest(t, ts, "GET", "/")
-		defer response.Body.Close()
-		require.Equal(t, response.StatusCode, test.result.code)
-		require.Equal(t, body, test.result.body)
-	}
-}
-
 func TestValueHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()

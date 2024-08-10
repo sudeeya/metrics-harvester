@@ -2,10 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
@@ -21,13 +20,46 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		response := make([]string, len(allMetrics))
+		metrics := make([]struct {
+			ID    string
+			Value string
+		}, len(allMetrics))
 		for i, m := range allMetrics {
-			response[i] = fmt.Sprintf("%s: %s", m.ID, m.GetValue())
+			metrics[i].ID = m.ID
+			metrics[i].Value = m.GetValue()
 		}
-		w.Header().Set("content-type", "text/plain")
+		data := struct {
+			Metrics []struct {
+				ID    string
+				Value string
+			}
+		}{
+			Metrics: metrics,
+		}
+		tmpl := `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+	<style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+        }
+	</style>
+</head>
+<body>
+    <ul>
+        {{range .Metrics}}
+        <li>{{.ID}}: {{.Value}}</li>
+        {{end}}
+    </ul>
+</body>
+`
+		t, _ := template.New("page").Parse(tmpl)
+		w.Header().Set("content-type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(strings.Join(response, "\n"))); err != nil {
+		if err = t.Execute(w, data); err != nil {
 			logger.Error(err.Error())
 		}
 	}
