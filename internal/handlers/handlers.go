@@ -15,7 +15,12 @@ import (
 
 func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		allMetrics := repository.GetAllMetrics()
+		allMetrics, err := repository.GetAllMetrics()
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		response := make([]string, len(allMetrics))
 		for i, m := range allMetrics {
 			response[i] = fmt.Sprintf("%s: %s", m.ID, m.GetValue())

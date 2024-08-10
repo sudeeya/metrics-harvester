@@ -17,11 +17,11 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) PutMetric(m metric.Metric) {
+func (ms *MemStorage) PutMetric(m metric.Metric) error {
 	value, ok := ms.metrics[m.ID]
 	if !ok {
 		ms.metrics[m.ID] = m
-		return
+		return nil
 	}
 	switch m.MType {
 	case metric.Gauge:
@@ -30,6 +30,7 @@ func (ms *MemStorage) PutMetric(m metric.Metric) {
 		value.Update(*m.Delta)
 	}
 	ms.metrics[m.ID] = value
+	return nil
 }
 
 func (ms *MemStorage) GetMetric(mName string) (metric.Metric, bool) {
@@ -37,7 +38,7 @@ func (ms *MemStorage) GetMetric(mName string) (metric.Metric, bool) {
 	return m, ok
 }
 
-func (ms *MemStorage) GetAllMetrics() []metric.Metric {
+func (ms *MemStorage) GetAllMetrics() ([]metric.Metric, error) {
 	allMetrics := make([]metric.Metric, len(ms.metrics))
 	i := 0
 	for _, value := range ms.metrics {
@@ -47,5 +48,5 @@ func (ms *MemStorage) GetAllMetrics() []metric.Metric {
 	slices.SortFunc(allMetrics, func(a, b metric.Metric) int {
 		return strings.Compare(a.ID, b.ID)
 	})
-	return allMetrics
+	return allMetrics, nil
 }
