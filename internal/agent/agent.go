@@ -1,39 +1,44 @@
 package agent
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"math/rand/v2"
-	"net/http"
 	"runtime"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
 type Agent struct {
 	cfg    *Config
-	client *http.Client
+	client *resty.Client
 }
 
 func NewAgent(cfg *Config) *Agent {
+	client := resty.New()
 	return &Agent{
 		cfg:    cfg,
-		client: &http.Client{},
+		client: client,
 	}
 }
 
 func (a *Agent) Run() {
-	metrics := NewMetrics()
-	for {
-		var i int64
-		for i = 0; i < a.cfg.ReportInterval/a.cfg.PollInterval; i++ {
-			time.Sleep(time.Duration(a.cfg.PollInterval) * time.Second)
+	var (
+		metrics      = NewMetrics()
+		pollTicker   = time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
+		reportTicker = time.NewTicker(time.Duration(a.cfg.ReportInterval) * time.Second)
+	)
+	go func() {
+		for range pollTicker.C {
 			UpdateMetrics(metrics)
 		}
-		a.SendMetrics(metrics)
-	}
+	}()
+	go func() {
+		for range reportTicker.C {
+			a.SendMetrics(metrics)
+		}
+	}()
+	select {}
 }
 
 func (a *Agent) SendMetrics(metrics *Metrics) {
@@ -43,22 +48,14 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 }
 
 func (a *Agent) sendMetric(m *metric.Metric) {
-	var (
-		url  = a.cfg.Address + "/update/"
-		body bytes.Buffer
-	)
-	if err := json.NewEncoder(&body).Encode(*m); err != nil {
-		panic(err)
-	}
-	response, err := a.client.Post(url, "application/json", &body)
+	response, err := a.client.R().
+		SetHeader("content-type", "application/json").
+		SetBody(m).
+		Post(a.cfg.Address + "/update/")
 	if err != nil {
 		panic(err)
 	}
-	defer response.Body.Close()
-	_, err = io.Copy(io.Discard, response.Body)
-	if err != nil {
-		panic(err)
-	}
+	defer response.RawResponse.Body.Close()
 }
 
 type Metrics struct {

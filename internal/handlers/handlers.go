@@ -106,14 +106,14 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 
 func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var m metric.Metric
-		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		var requestedMetric metric.Metric
+		if err := json.NewDecoder(r.Body).Decode(&requestedMetric); err != nil {
 			logger.Error(err.Error())
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		m, ok := repository.GetMetric(m.ID)
+		m, ok := repository.GetMetric(requestedMetric.ID)
 		if !ok {
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
