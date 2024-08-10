@@ -56,14 +56,31 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 }
 
 func (a *Agent) sendMetric(m *metric.Metric) {
+	backoffSchedule := []time.Duration{
+		100 * time.Millisecond,
+		500 * time.Millisecond,
+		1 * time.Second,
+	}
+	for _, backoff := range backoffSchedule {
+		err := a.trySend(m)
+		if err == nil {
+			break
+		}
+		a.logger.Error(err.Error())
+		time.Sleep(backoff)
+	}
+}
+
+func (a *Agent) trySend(m *metric.Metric) error {
 	response, err := a.client.R().
 		SetHeader("content-type", "application/json").
 		SetBody(m).
 		Post("/update/")
 	if err != nil {
-		a.logger.Error(err.Error())
+		return err
 	}
 	defer response.RawResponse.Body.Close()
+	return nil
 }
 
 type Metrics struct {
