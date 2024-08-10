@@ -22,6 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 	memStorage := storage.NewMemStorage()
+	logger.Info("Starting metrics-harvester")
 	server := server.NewServer(cfg, logger, memStorage)
 	server.Run()
 }

@@ -7,22 +7,27 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
 	cfg    *Config
+	logger *zap.Logger
 	client *resty.Client
 }
 
-func NewAgent(cfg *Config) *Agent {
-	client := resty.New()
+func NewAgent(cfg *Config, logger *zap.Logger) *Agent {
+	logger.Info("Initializing client")
+	client := resty.New().SetBaseURL(cfg.Address)
 	return &Agent{
 		cfg:    cfg,
+		logger: logger,
 		client: client,
 	}
 }
 
 func (a *Agent) Run() {
+	a.logger.Info("Agent is running")
 	var (
 		metrics      = NewMetrics()
 		pollTicker   = time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
@@ -30,11 +35,13 @@ func (a *Agent) Run() {
 	)
 	go func() {
 		for range pollTicker.C {
+			a.logger.Info("Updating metric values")
 			UpdateMetrics(metrics)
 		}
 	}()
 	go func() {
 		for range reportTicker.C {
+			a.logger.Info("Sending all metrics")
 			a.SendMetrics(metrics)
 		}
 	}()
@@ -43,6 +50,7 @@ func (a *Agent) Run() {
 
 func (a *Agent) SendMetrics(metrics *Metrics) {
 	for _, m := range metrics.Values {
+		a.logger.Sugar().Infof("Sending %s metric", m.ID)
 		a.sendMetric(m)
 	}
 }
@@ -51,9 +59,9 @@ func (a *Agent) sendMetric(m *metric.Metric) {
 	response, err := a.client.R().
 		SetHeader("content-type", "application/json").
 		SetBody(m).
-		Post(a.cfg.Address + "/update/")
+		Post("/update/")
 	if err != nil {
-		panic(err)
+		a.logger.Error(err.Error())
 	}
 	defer response.RawResponse.Body.Close()
 }

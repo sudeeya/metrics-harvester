@@ -19,10 +19,13 @@ type Server struct {
 }
 
 func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Server {
-	router := chi.NewRouter()
-	addRoutes(logger, repository, router)
-	handler := log.WithLogging(logger, router)
+	logger.Info("Initializing repository")
 	initializeMetrics(repository)
+	router := chi.NewRouter()
+	logger.Info("Initializing routes")
+	addRoutes(logger, repository, router)
+	logger.Info("Initializing middleware")
+	handler := log.WithLogging(logger, router)
 	return &Server{
 		cfg:        cfg,
 		logger:     logger,
@@ -74,6 +77,7 @@ func initializeMetrics(repository repo.Repository) {
 }
 
 func (s *Server) Run() {
+	s.logger.Info("Server is running")
 	if err := http.ListenAndServe(s.cfg.Address, s.handler); err != nil {
 		s.logger.Fatal(err.Error())
 	}
