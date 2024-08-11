@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"math/rand/v2"
 	"runtime"
 	"time"
@@ -8,6 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"go.uber.org/zap"
+	"go.uber.org/zap/buffer"
 )
 
 type Agent struct {
@@ -72,9 +75,24 @@ func (a *Agent) sendMetric(m *metric.Metric) {
 }
 
 func (a *Agent) trySend(m *metric.Metric) error {
+	var buf buffer.Buffer
+	gzipWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	if err != nil {
+		return err
+	}
+	err = json.NewEncoder(gzipWriter).Encode(m)
+	if err != nil {
+		return err
+	}
+	err = gzipWriter.Close()
+	if err != nil {
+		return err
+	}
 	response, err := a.client.R().
 		SetHeader("content-type", "application/json").
-		SetBody(m).
+		SetHeader("content-encoding", "gzip").
+		SetHeader("accept-encoding", "gzip").
+		SetBody(buf.Bytes()).
 		Post("/update/")
 	if err != nil {
 		return err

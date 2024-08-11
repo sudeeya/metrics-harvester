@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
@@ -126,7 +129,13 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m metric.Metric
-		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		body, err := decompressIfNeeded(r)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewDecoder(body).Decode(&m); err != nil {
 			logger.Error(err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -139,6 +148,13 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 			logger.Error(err.Error())
 		}
 	}
+}
+
+func decompressIfNeeded(r *http.Request) (io.Reader, error) {
+	if strings.Contains(r.Header.Get("content-encoding"), "gzip") {
+		return gzip.NewReader(r.Body)
+	}
+	return r.Body, nil
 }
 
 func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {

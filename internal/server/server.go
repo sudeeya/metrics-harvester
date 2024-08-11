@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
-	log "github.com/sudeeya/metrics-harvester/internal/logger"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
+	"github.com/sudeeya/metrics-harvester/internal/middleware"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
 	"go.uber.org/zap"
 )
@@ -25,7 +25,8 @@ func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Ser
 	logger.Info("Initializing routes")
 	addRoutes(logger, repository, router)
 	logger.Info("Initializing middleware")
-	handler := log.WithLogging(logger, router)
+	handler := middleware.WithCompressing(router)
+	handler = middleware.WithLogging(logger, handler)
 	return &Server{
 		cfg:        cfg,
 		logger:     logger,
