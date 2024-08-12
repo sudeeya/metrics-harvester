@@ -9,7 +9,7 @@ import (
 type Config struct {
 	Address         string `env:"ADDRESS" envDefault:"localhost:8080"`
 	StoreInterval   int64  `env:"STORE_INTERVAL" envDefault:"300"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:""`
+	FileStoragePath string `env:"FILE_STORAGE_PATH" envDefault:"metrics.json"`
 	Restore         bool   `env:"RESTORE" envDefault:"true"`
 }
 
