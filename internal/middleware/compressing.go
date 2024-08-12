@@ -25,7 +25,7 @@ func WithCompressing(handler http.Handler) http.Handler {
 		w.Header().Set("content-encoding", "gzip")
 		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			io.WriteString(w, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer gzipWriter.Close()
