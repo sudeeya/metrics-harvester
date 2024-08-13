@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -41,18 +43,17 @@ func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Ser
 }
 
 func initializeStorageFile(cfg *Config, logger *zap.Logger) {
-	file, err := os.Open(cfg.FileStoragePath)
-	if os.IsNotExist(err) {
-		newFile, err := os.Create(cfg.FileStoragePath)
-		if err != nil {
-			logger.Fatal(err.Error())
-		}
-		newFile.Close()
-		if err := os.WriteFile(cfg.FileStoragePath, []byte("[]"), 0666); err != nil {
-			logger.Fatal(err.Error())
-		}
-	} else {
+	if file, err := os.Open(cfg.FileStoragePath); !os.IsNotExist(err) {
 		file.Close()
+		return
+	}
+	newFile, err := os.Create(cfg.FileStoragePath)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	newFile.Close()
+	if err := os.WriteFile(cfg.FileStoragePath, []byte("[]"), 0666); err != nil {
+		logger.Fatal(err.Error())
 	}
 }
 
@@ -121,6 +122,8 @@ func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router
 func (s *Server) Run() {
 	s.logger.Info("Server is running")
 	storeTicker := time.NewTicker(time.Duration(s.cfg.StoreInterval) * time.Second)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		if err := http.ListenAndServe(s.cfg.Address, s.handler); err != nil {
 			s.logger.Fatal(err.Error())
@@ -132,12 +135,18 @@ func (s *Server) Run() {
 			s.StoreMetricsToFile()
 		}
 	}()
+	go func() {
+		<-sigChan
+		s.logger.Info("Server is shutting down")
+		s.StoreMetricsToFile()
+		os.Exit(0)
+	}()
 	select {}
 }
 
 func (s *Server) StoreMetricsToFile() {
 	metrics, _ := s.repository.GetAllMetrics()
-	data, err := json.MarshalIndent(metrics, "", "	")
+	data, err := json.MarshalIndent(metrics, "", "\t")
 	if err != nil {
 		s.logger.Fatal(err.Error())
 	}
