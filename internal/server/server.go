@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -122,8 +120,6 @@ func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router
 func (s *Server) Run() {
 	s.logger.Info("Server is running")
 	storeTicker := time.NewTicker(time.Duration(s.cfg.StoreInterval) * time.Second)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		if err := http.ListenAndServe(s.cfg.Address, s.handler); err != nil {
 			s.logger.Fatal(err.Error())
@@ -134,12 +130,6 @@ func (s *Server) Run() {
 			s.logger.Info("Storing all metrics to file")
 			s.StoreMetricsToFile()
 		}
-	}()
-	go func() {
-		<-sigChan
-		s.logger.Info("Server is shutting down")
-		s.StoreMetricsToFile()
-		os.Exit(0)
 	}()
 	select {}
 }
