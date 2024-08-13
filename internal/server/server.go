@@ -41,17 +41,18 @@ func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Ser
 }
 
 func initializeStorageFile(cfg *Config, logger *zap.Logger) {
-	if file, err := os.Open(cfg.FileStoragePath); os.IsExist(err) {
+	file, err := os.Open(cfg.FileStoragePath)
+	if os.IsNotExist(err) {
+		newFile, err := os.Create(cfg.FileStoragePath)
+		if err != nil {
+			logger.Fatal(err.Error())
+		}
+		newFile.Close()
+		if err := os.WriteFile(cfg.FileStoragePath, []byte("[]"), 0666); err != nil {
+			logger.Fatal(err.Error())
+		}
+	} else {
 		file.Close()
-		return
-	}
-	newFile, err := os.Create(cfg.FileStoragePath)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
-	newFile.Close()
-	if err := os.WriteFile(cfg.FileStoragePath, []byte("[]"), 0666); err != nil {
-		logger.Fatal(err.Error())
 	}
 }
 
@@ -136,7 +137,7 @@ func (s *Server) Run() {
 
 func (s *Server) StoreMetricsToFile() {
 	metrics, _ := s.repository.GetAllMetrics()
-	data, err := json.MarshalIndent(metrics, "", "\t")
+	data, err := json.MarshalIndent(metrics, "", "	")
 	if err != nil {
 		s.logger.Fatal(err.Error())
 	}
