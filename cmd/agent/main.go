@@ -16,11 +16,16 @@ func main() {
 	logConfig := zap.NewDevelopmentConfig()
 	logConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	logger, err := logConfig.Build()
-	defer logger.Sync()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
 	logger.Info("Starting agent")
-	agent := agent.NewAgent(cfg, logger)
+	agent := agent.NewAgent(logger, cfg)
 	agent.Run()
 }

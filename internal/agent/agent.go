@@ -19,7 +19,7 @@ type Agent struct {
 	client *resty.Client
 }
 
-func NewAgent(cfg *Config, logger *zap.Logger) *Agent {
+func NewAgent(logger *zap.Logger, cfg *Config) *Agent {
 	logger.Info("Initializing client")
 	client := resty.New().SetBaseURL(cfg.Address)
 	return &Agent{

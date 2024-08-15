@@ -23,11 +23,11 @@ type Server struct {
 	handler    http.Handler
 }
 
-func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Server {
+func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Server {
 	logger.Info("Initializing storage file")
-	initializeStorageFile(cfg, logger)
+	initializeStorageFile(logger, cfg)
 	logger.Info("Initializing repository")
-	initializeMetrics(cfg, logger, repository)
+	initializeMetrics(logger, cfg, repository)
 	router := chi.NewRouter()
 	logger.Info("Initializing routes")
 	addRoutes(logger, repository, router)
@@ -42,7 +42,7 @@ func NewServer(cfg *Config, logger *zap.Logger, repository repo.Repository) *Ser
 	}
 }
 
-func initializeStorageFile(cfg *Config, logger *zap.Logger) {
+func initializeStorageFile(logger *zap.Logger, cfg *Config) {
 	if file, err := os.Open(cfg.FileStoragePath); !os.IsNotExist(err) {
 		file.Close()
 		return
@@ -57,7 +57,7 @@ func initializeStorageFile(cfg *Config, logger *zap.Logger) {
 	}
 }
 
-func initializeMetrics(cfg *Config, logger *zap.Logger, repository repo.Repository) {
+func initializeMetrics(logger *zap.Logger, cfg *Config, repository repo.Repository) {
 	if cfg.Restore {
 		logger.Info("Initializing metrics with saved values from a file")
 		savedData, err := os.ReadFile(cfg.FileStoragePath)

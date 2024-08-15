@@ -15,31 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		allMetrics, err := repository.GetAllMetrics()
-		if err != nil {
-			logger.Error(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		metrics := make([]struct {
-			ID    string
-			Value string
-		}, len(allMetrics))
-		for i, m := range allMetrics {
-			metrics[i].ID = m.ID
-			metrics[i].Value = m.GetValue()
-		}
-		data := struct {
-			Metrics []struct {
-				ID    string
-				Value string
-			}
-		}{
-			Metrics: metrics,
-		}
-		tmpl := `
+const htmlTemplate = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,7 +35,31 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
     </ul>
 </body>
 `
-		t, _ := template.New("page").Parse(tmpl)
+
+type htmlMetric struct {
+	ID    string
+	Value string
+}
+
+func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		allMetrics, err := repository.GetAllMetrics()
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		metrics := make([]htmlMetric, len(allMetrics))
+		for i, m := range allMetrics {
+			metrics[i].ID = m.ID
+			metrics[i].Value = m.GetValue()
+		}
+		data := struct {
+			Metrics []htmlMetric
+		}{
+			Metrics: metrics,
+		}
+		t, _ := template.New("page").Parse(htmlTemplate)
 		w.Header().Set("content-type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		if err = t.Execute(w, data); err != nil {

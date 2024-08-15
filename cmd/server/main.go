@@ -17,12 +17,17 @@ func main() {
 	logConfig := zap.NewDevelopmentConfig()
 	logConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	logger, err := logConfig.Build()
-	defer logger.Sync()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			log.Print(err)
+		}
+	}()
 	memStorage := storage.NewMemStorage()
 	logger.Info("Starting metrics-harvester")
-	server := server.NewServer(cfg, logger, memStorage)
+	server := server.NewServer(logger, cfg, memStorage)
 	server.Run()
 }
