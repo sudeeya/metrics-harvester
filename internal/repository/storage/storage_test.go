@@ -5,146 +5,111 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
+	"github.com/sudeeya/metrics-harvester/internal/utils"
 )
 
-func TestPutGauge(t *testing.T) {
+func TestPutMetric(t *testing.T) {
 	var (
 		ms1 = &MemStorage{metrics: map[string]metric.Metric{
-			"gauge": metric.NewGauge("gauge", 12),
+			"gauge": {ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12)},
 		}}
 		ms2 = &MemStorage{metrics: map[string]metric.Metric{
-			"gauge": metric.NewGauge("gauge", 12.12),
+			"gauge": {ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)},
 		}}
 		ms3 = &MemStorage{metrics: map[string]metric.Metric{
-			"gauge": metric.NewGauge("gauge", 12.12),
-			"dummy": metric.NewGauge("dummy", -1),
+			"counter": {ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
+		}}
+		ms4 = &MemStorage{metrics: map[string]metric.Metric{
+			"counter": {ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(24)},
 		}}
 	)
 	tests := []struct {
 		ms     *MemStorage
-		name   string
-		value  float64
+		mName  string
+		m      metric.Metric
 		result *MemStorage
 	}{
 		{
 			ms:     NewMemStorage(),
-			name:   "gauge",
-			value:  12,
+			mName:  "gauge",
+			m:      metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12)},
 			result: ms1,
 		},
 		{
 			ms:     ms1,
-			name:   "gauge",
-			value:  12.12,
+			mName:  "gauge",
+			m:      metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)},
 			result: ms2,
 		},
-		{
-			ms:     ms2,
-			name:   "dummy",
-			value:  -1,
-			result: ms3,
-		},
-	}
-	for _, test := range tests {
-		test.ms.PutGauge(test.name, test.value)
-		require.EqualValues(t, test.result, test.ms)
-	}
-}
-
-func TestPutCounter(t *testing.T) {
-	var (
-		ms1 = &MemStorage{metrics: map[string]metric.Metric{
-			"counter": metric.NewCounter("counter", 12),
-		}}
-		ms2 = &MemStorage{metrics: map[string]metric.Metric{
-			"counter": metric.NewCounter("counter", 24),
-		}}
-		ms3 = &MemStorage{metrics: map[string]metric.Metric{
-			"counter": metric.NewCounter("counter", 24),
-			"dummy":   metric.NewCounter("dummy", -1),
-		}}
-	)
-	tests := []struct {
-		ms     *MemStorage
-		name   string
-		value  int64
-		result *MemStorage
-	}{
 		{
 			ms:     NewMemStorage(),
-			name:   "counter",
-			value:  12,
-			result: ms1,
-		},
-		{
-			ms:     ms1,
-			name:   "counter",
-			value:  12,
-			result: ms2,
-		},
-		{
-			ms:     ms2,
-			name:   "dummy",
-			value:  -1,
+			mName:  "counter",
+			m:      metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
 			result: ms3,
+		},
+		{
+			ms:     ms3,
+			mName:  "counter",
+			m:      metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
+			result: ms4,
 		},
 	}
 	for _, test := range tests {
-		test.ms.PutCounter(test.name, test.value)
-		require.EqualValues(t, test.result, test.ms)
+		test.ms.PutMetric(test.m)
+		require.EqualValues(t, test.result.metrics[test.mName].GetValue(), test.ms.metrics[test.mName].GetValue())
 	}
 }
 
-func TestGetMetric_NoError(t *testing.T) {
+func TestGetMetric_Existing(t *testing.T) {
 	var (
 		ms1 = &MemStorage{metrics: map[string]metric.Metric{
-			"gauge": metric.NewGauge("gauge", 12.12),
+			"gauge": {ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12)},
 		}}
 		ms2 = &MemStorage{metrics: map[string]metric.Metric{
-			"counter": metric.NewCounter("counter", 12),
-			"dummy":   metric.NewCounter("dummy", -1),
+			"counter": {ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
+			"dummy":   {ID: "dummy", MType: metric.Gauge, Value: utils.Float64Ptr(-1)},
 		}}
 	)
 	tests := []struct {
 		ms     *MemStorage
-		name   string
+		mName  string
 		result metric.Metric
 	}{
 		{
 			ms:     ms1,
-			name:   "gauge",
-			result: metric.NewGauge("gauge", 12.12),
+			mName:  "gauge",
+			result: metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12)},
 		},
 		{
 			ms:     ms2,
-			name:   "counter",
-			result: metric.NewCounter("counter", 12),
+			mName:  "counter",
+			result: metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
 		},
 	}
 	for _, test := range tests {
-		metric, err := test.ms.GetMetric(test.name)
-		require.Nil(t, err)
-		require.EqualValues(t, test.result, metric)
+		m, ok := test.ms.GetMetric(test.mName)
+		require.Equal(t, true, ok)
+		require.EqualValues(t, test.result.GetValue(), m.GetValue())
 	}
 }
 
-func TestGetMetric_Error(t *testing.T) {
+func TestGetMetric_NotExisting(t *testing.T) {
 	var (
 		ms1 = &MemStorage{metrics: map[string]metric.Metric{
-			"counter": metric.NewCounter("counter", 12),
+			"counter": {ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)},
 		}}
 	)
 	tests := []struct {
-		ms   *MemStorage
-		name string
+		ms    *MemStorage
+		mName string
 	}{
 		{
-			ms:   ms1,
-			name: "gauge",
+			ms:    ms1,
+			mName: "gauge",
 		},
 	}
 	for _, test := range tests {
-		_, err := test.ms.GetMetric(test.name)
-		require.NotNil(t, err)
+		_, ok := test.ms.GetMetric(test.mName)
+		require.Equal(t, false, ok)
 	}
 }
