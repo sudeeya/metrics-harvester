@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
-	"github.com/sudeeya/metrics-harvester/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -25,6 +24,14 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	return response, string(body)
 }
 
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
+func float64Ptr(f float64) *float64 {
+	return &f
+}
+
 func TestValueHandler(t *testing.T) {
 	var (
 		ms     = storage.NewMemStorage()
@@ -33,8 +40,8 @@ func TestValueHandler(t *testing.T) {
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: utils.Float64Ptr(12.12)})
-	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: utils.Int64Ptr(12)})
+	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: float64Ptr(12.12)})
+	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: int64Ptr(12)})
 	router.Get("/value/{metricType}/{metricName}", NewValueHandler(l, ms))
 	type result struct {
 		code int
