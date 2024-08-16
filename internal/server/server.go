@@ -1,7 +1,9 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/middleware"
@@ -18,6 +21,7 @@ import (
 
 type Server struct {
 	cfg        *Config
+	db         *sql.DB
 	logger     *zap.Logger
 	repository repo.Repository
 	handler    http.Handler
@@ -28,9 +32,15 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	initializeStorageFile(logger, cfg)
 	logger.Info("Initializing repository")
 	initializeMetrics(logger, cfg, repository)
+
+	db, err := sql.Open("pgx", cfg.DatabaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	router := chi.NewRouter()
 	logger.Info("Initializing routes")
-	addRoutes(logger, repository, router)
+	addRoutes(logger, db, repository, router)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
 	handler = middleware.WithLogging(logger, handler)
@@ -109,8 +119,9 @@ func initializeDefault(repository repo.Repository) {
 	repository.PutMetric(metric.Metric{ID: "TotalAlloc", MType: metric.Gauge, Value: new(float64)})
 }
 
-func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
+func addRoutes(logger *zap.Logger, db *sql.DB, repository repo.Repository, router chi.Router) {
 	router.Get("/value/{metricType}/{metricName}", handlers.NewValueHandler(logger, repository))
+	router.Get("/ping", handlers.NewPingHandler(logger, db))
 	router.Get("/", handlers.NewAllMetricsHandler(logger, repository))
 	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewUpdateHandler(logger, repository))
 	router.Post("/update/{metricType}/", http.NotFound)
@@ -139,6 +150,9 @@ func (s *Server) Run() {
 		<-sigChan
 		s.logger.Info("Server is shutting down")
 		s.StoreMetricsToFile()
+		if err := s.db.Close(); err != nil {
+			s.logger.Fatal(err.Error())
+		}
 		os.Exit(0)
 	}()
 	select {}

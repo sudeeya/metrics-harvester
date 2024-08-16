@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"compress/gzip"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"html/template"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
@@ -89,6 +92,18 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
+	}
+}
+
+func NewPingHandler(logger *zap.Logger, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		if err := db.PingContext(ctx); err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
