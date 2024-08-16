@@ -33,9 +33,13 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	logger.Info("Initializing repository")
 	initializeMetrics(logger, cfg, repository)
 
-	db, err := sql.Open("pgx", cfg.DatabaseDSN)
-	if err != nil {
-		log.Fatal(err)
+	var db *sql.DB
+	var err error
+	if cfg.DatabaseDSN != "" {
+		db, err = sql.Open("pgx", cfg.DatabaseDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	router := chi.NewRouter()
@@ -46,6 +50,7 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	handler = middleware.WithLogging(logger, handler)
 	return &Server{
 		cfg:        cfg,
+		db:         db,
 		logger:     logger,
 		repository: repository,
 		handler:    handler,

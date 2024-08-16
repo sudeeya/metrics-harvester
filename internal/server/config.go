@@ -2,7 +2,6 @@ package server
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -28,8 +27,5 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "Path to the file where the metric values are saved")
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "Determines whether previously saved values from a file will be loaded when the server starts")
 	flag.Parse()
-	if cfg.DatabaseDSN == "" {
-		return nil, fmt.Errorf("database DSN is required")
-	}
 	return &cfg, nil
 }
