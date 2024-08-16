@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
@@ -34,11 +35,11 @@ DO UPDATE SET
 )
 
 type Database struct {
-	*sql.DB
+	*sqlx.DB
 }
 
 func NewDatabase(dsn string) (*Database, error) {
-	db, err := sql.Open("pgx", dsn)
+	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
