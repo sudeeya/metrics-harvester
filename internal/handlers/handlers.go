@@ -3,7 +3,6 @@ package handlers
 import (
 	"compress/gzip"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -15,6 +14,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"github.com/sudeeya/metrics-harvester/internal/repository/database"
+	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"go.uber.org/zap"
 )
 
@@ -79,8 +80,8 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 		)
 		switch metricType {
 		case metric.Gauge, metric.Counter:
-			m, ok := repository.GetMetric(metricName)
-			if !ok {
+			m, err := repository.GetMetric(metricName)
+			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
@@ -95,16 +96,28 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 	}
 }
 
-func NewPingHandler(logger *zap.Logger, db *sql.DB) http.HandlerFunc {
+func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-		if err := db.PingContext(ctx); err != nil {
-			logger.Error(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+		switch v := repository.(type) {
+		case *database.Database:
+			if err := databaseResponse(v, w); err != nil {
+				logger.Error(err.Error())
+			}
+		case *storage.MemStorage:
+			http.Error(w, "the database is not in use", http.StatusInternalServerError)
 		}
-		w.WriteHeader(http.StatusOK)
 	}
+}
+
+func databaseResponse(db *database.Database, w http.ResponseWriter) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	if err := db.DB.PingContext(ctx); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return err
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
 }
 
 func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
@@ -181,8 +194,8 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		m, ok := repository.GetMetric(requestedMetric.ID)
-		if !ok {
+		m, err := repository.GetMetric(requestedMetric.ID)
+		if err != nil {
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			return

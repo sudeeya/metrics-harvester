@@ -1,9 +1,8 @@
 package server
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,17 +10,17 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/middleware"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"github.com/sudeeya/metrics-harvester/internal/repository/database"
+	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"go.uber.org/zap"
 )
 
 type Server struct {
 	cfg        *Config
-	db         *sql.DB
 	logger     *zap.Logger
 	repository repo.Repository
 	handler    http.Handler
@@ -31,26 +30,15 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	logger.Info("Initializing storage file")
 	initializeStorageFile(logger, cfg)
 	logger.Info("Initializing repository")
-	initializeMetrics(logger, cfg, repository)
-
-	var db *sql.DB
-	var err error
-	if cfg.DatabaseDSN != "" {
-		db, err = sql.Open("pgx", cfg.DatabaseDSN)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
+	initializeRepository(logger, cfg, repository)
 	router := chi.NewRouter()
 	logger.Info("Initializing routes")
-	addRoutes(logger, db, repository, router)
+	addRoutes(logger, repository, router)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
 	handler = middleware.WithLogging(logger, handler)
 	return &Server{
 		cfg:        cfg,
-		db:         db,
 		logger:     logger,
 		repository: repository,
 		handler:    handler,
@@ -72,23 +60,30 @@ func initializeStorageFile(logger *zap.Logger, cfg *Config) {
 	}
 }
 
-func initializeMetrics(logger *zap.Logger, cfg *Config, repository repo.Repository) {
-	if cfg.Restore {
-		logger.Info("Initializing metrics with saved values from a file")
-		savedData, err := os.ReadFile(cfg.FileStoragePath)
-		if err != nil {
+func initializeRepository(logger *zap.Logger, cfg *Config, repository repo.Repository) {
+	switch v := repository.(type) {
+	case *database.Database:
+		if _, err := v.DB.ExecContext(context.Background(), database.CreateMetricsTable); err != nil {
 			logger.Fatal(err.Error())
 		}
-		var savedMetrics []metric.Metric
-		if err := json.Unmarshal(savedData, &savedMetrics); err != nil {
-			logger.Fatal(err.Error())
+	case *storage.MemStorage:
+		if cfg.Restore {
+			logger.Info("Initializing metrics with saved values from a file")
+			savedData, err := os.ReadFile(cfg.FileStoragePath)
+			if err != nil {
+				logger.Fatal(err.Error())
+			}
+			var savedMetrics []metric.Metric
+			if err := json.Unmarshal(savedData, &savedMetrics); err != nil {
+				logger.Fatal(err.Error())
+			}
+			for _, m := range savedMetrics {
+				repository.PutMetric(m)
+			}
+		} else {
+			logger.Info("Initializing nessessory metrics")
+			initializeDefault(repository)
 		}
-		for _, m := range savedMetrics {
-			repository.PutMetric(m)
-		}
-	} else {
-		logger.Info("Initializing nessessory metrics")
-		initializeDefault(repository)
 	}
 }
 
@@ -124,9 +119,9 @@ func initializeDefault(repository repo.Repository) {
 	repository.PutMetric(metric.Metric{ID: "TotalAlloc", MType: metric.Gauge, Value: new(float64)})
 }
 
-func addRoutes(logger *zap.Logger, db *sql.DB, repository repo.Repository, router chi.Router) {
+func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
 	router.Get("/value/{metricType}/{metricName}", handlers.NewValueHandler(logger, repository))
-	router.Get("/ping", handlers.NewPingHandler(logger, db))
+	router.Get("/ping", handlers.NewPingHandler(logger, repository))
 	router.Get("/", handlers.NewAllMetricsHandler(logger, repository))
 	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewUpdateHandler(logger, repository))
 	router.Post("/update/{metricType}/", http.NotFound)
@@ -154,11 +149,7 @@ func (s *Server) Run() {
 	go func() {
 		<-sigChan
 		s.logger.Info("Server is shutting down")
-		s.StoreMetricsToFile()
-		if err := s.db.Close(); err != nil {
-			s.logger.Fatal(err.Error())
-		}
-		os.Exit(0)
+		s.Shutdown()
 	}()
 	select {}
 }
@@ -172,4 +163,12 @@ func (s *Server) StoreMetricsToFile() {
 	if err := os.WriteFile(s.cfg.FileStoragePath, data, 0666); err != nil {
 		s.logger.Fatal(err.Error())
 	}
+}
+
+func (s *Server) Shutdown() {
+	s.StoreMetricsToFile()
+	if err := s.repository.Close(); err != nil {
+		s.logger.Fatal(err.Error())
+	}
+	os.Exit(0)
 }

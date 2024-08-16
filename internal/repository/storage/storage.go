@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -33,9 +34,12 @@ func (ms *MemStorage) PutMetric(m metric.Metric) error {
 	return nil
 }
 
-func (ms *MemStorage) GetMetric(mName string) (metric.Metric, bool) {
+func (ms *MemStorage) GetMetric(mName string) (metric.Metric, error) {
 	m, ok := ms.metrics[mName]
-	return m, ok
+	if !ok {
+		return metric.Metric{}, fmt.Errorf("metric %s is missing", mName)
+	}
+	return m, nil
 }
 
 func (ms *MemStorage) GetAllMetrics() ([]metric.Metric, error) {
@@ -49,4 +53,8 @@ func (ms *MemStorage) GetAllMetrics() ([]metric.Metric, error) {
 		return strings.Compare(a.ID, b.ID)
 	})
 	return allMetrics, nil
+}
+
+func (ms *MemStorage) Close() error {
+	return nil
 }

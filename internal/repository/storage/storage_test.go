@@ -94,8 +94,8 @@ func TestGetMetric_Existing(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		m, ok := test.ms.GetMetric(test.mName)
-		require.Equal(t, true, ok)
+		m, err := test.ms.GetMetric(test.mName)
+		require.Nil(t, err)
 		require.EqualValues(t, test.result.GetValue(), m.GetValue())
 	}
 }
@@ -116,7 +116,7 @@ func TestGetMetric_NotExisting(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		_, ok := test.ms.GetMetric(test.mName)
-		require.Equal(t, false, ok)
+		_, err := test.ms.GetMetric(test.mName)
+		require.NotNil(t, err)
 	}
 }
