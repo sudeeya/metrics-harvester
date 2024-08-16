@@ -63,6 +63,7 @@ func initializeStorageFile(logger *zap.Logger, cfg *Config) {
 func initializeRepository(logger *zap.Logger, cfg *Config, repository repo.Repository) {
 	switch v := repository.(type) {
 	case *database.Database:
+		logger.Info("Initializing database")
 		if _, err := v.DB.ExecContext(context.Background(), database.CreateMetricsTable); err != nil {
 			logger.Fatal(err.Error())
 		}
