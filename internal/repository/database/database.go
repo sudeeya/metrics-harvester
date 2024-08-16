@@ -115,6 +115,9 @@ func (db *Database) GetAllMetrics() ([]metric.Metric, error) {
 		}
 		allMetrics = append(allMetrics, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return allMetrics, nil
 }
 
