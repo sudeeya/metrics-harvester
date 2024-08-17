@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math/rand/v2"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -14,19 +16,36 @@ import (
 )
 
 type Agent struct {
-	cfg    *Config
-	logger *zap.Logger
-	client *resty.Client
+	cfg             *Config
+	logger          *zap.Logger
+	client          *resty.Client
+	backoffSchedule []time.Duration
 }
 
 func NewAgent(logger *zap.Logger, cfg *Config) *Agent {
 	logger.Info("Initializing client")
 	client := resty.New().SetBaseURL(cfg.Address)
+	logger.Info("Initializing backoff schedule")
+	backoffSchedule := initializeBackoffSchedule(logger, cfg)
 	return &Agent{
-		cfg:    cfg,
-		logger: logger,
-		client: client,
+		cfg:             cfg,
+		logger:          logger,
+		client:          client,
+		backoffSchedule: backoffSchedule,
 	}
+}
+
+func initializeBackoffSchedule(logger *zap.Logger, cfg *Config) []time.Duration {
+	tmp := strings.Split(cfg.BackoffSchedule, ",")
+	backoffSchedule := make([]time.Duration, len(tmp))
+	for i, str := range tmp {
+		value, err := strconv.Atoi(str)
+		if err != nil {
+			logger.Fatal(err.Error())
+		}
+		backoffSchedule[i] = time.Duration(value) * time.Millisecond
+	}
+	return backoffSchedule
 }
 
 func (a *Agent) Run() {
@@ -59,12 +78,7 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 }
 
 func (a *Agent) sendMetric(m *metric.Metric) {
-	backoffSchedule := []time.Duration{
-		100 * time.Millisecond,
-		500 * time.Millisecond,
-		1 * time.Second,
-	}
-	for _, backoff := range backoffSchedule {
+	for _, backoff := range a.backoffSchedule {
 		err := a.trySend(m)
 		if err == nil {
 			break
