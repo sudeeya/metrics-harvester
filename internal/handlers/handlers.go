@@ -178,6 +178,26 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 	}
 }
 
+func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metrics []metric.Metric
+		body, err := decompressIfNeeded(r)
+		if err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewDecoder(body).Decode(&metrics); err != nil {
+			logger.Error(err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		repository.PutBatch(metrics)
+		w.Header().Set("content-type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func decompressIfNeeded(r *http.Request) (io.Reader, error) {
 	if strings.Contains(r.Header.Get("content-encoding"), "gzip") {
 		return gzip.NewReader(r.Body)

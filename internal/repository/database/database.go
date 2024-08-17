@@ -30,7 +30,7 @@ INSERT INTO metrics (id, type, delta)
 VALUES ($1, $2, $3)
 ON CONFLICT (id)
 DO UPDATE SET
-	delta = EXCLUDED.delta;
+	delta = metrics.delta + EXCLUDED.delta;
 `
 )
 
@@ -51,13 +51,13 @@ func NewDatabase(dsn string) (*Database, error) {
 func (db *Database) PutMetric(m metric.Metric) error {
 	switch m.MType {
 	case metric.Gauge:
-		_, err := db.DB.ExecContext(context.Background(),
+		_, err := db.DB.ExecContext(context.TODO(),
 			insertGauge, m.ID, m.MType, *m.Value)
 		if err != nil {
 			return err
 		}
 	case metric.Counter:
-		_, err := db.DB.ExecContext(context.Background(),
+		_, err := db.DB.ExecContext(context.TODO(),
 			insertCounter, m.ID, m.MType, *m.Delta)
 		if err != nil {
 			return err
@@ -66,13 +66,45 @@ func (db *Database) PutMetric(m metric.Metric) error {
 	return nil
 }
 
+func (db *Database) PutBatch(metrics []metric.Metric) error {
+	tx, err := db.BeginTx(context.TODO(), nil)
+	if err != nil {
+		return err
+	}
+	stmtGauge, err := tx.PrepareContext(context.TODO(), insertGauge)
+	if err != nil {
+		return err
+	}
+	defer stmtGauge.Close()
+	stmtCounter, err := tx.PrepareContext(context.TODO(), insertCounter)
+	if err != nil {
+		return err
+	}
+	defer stmtCounter.Close()
+	for _, m := range metrics {
+		switch m.MType {
+		case metric.Gauge:
+			_, err := stmtGauge.ExecContext(context.TODO(), m.ID, m.MType, *m.Value)
+			if err != nil {
+				return tx.Rollback()
+			}
+		case metric.Counter:
+			_, err := stmtCounter.ExecContext(context.TODO(), m.ID, m.MType, *m.Delta)
+			if err != nil {
+				return tx.Rollback()
+			}
+		}
+	}
+	return tx.Commit()
+}
+
 func (db *Database) GetMetric(mName string) (metric.Metric, error) {
 	var (
 		mType string
 		delta sql.NullInt64
 		value sql.NullFloat64
 	)
-	row := db.DB.QueryRowContext(context.Background(),
+	row := db.DB.QueryRowContext(context.TODO(),
 		"SELECT type, delta, value FROM metrics WHERE id = $1", mName)
 	if err := row.Scan(&mType, &delta, &value); err != nil {
 		return metric.Metric{}, err
@@ -93,18 +125,18 @@ func (db *Database) GetMetric(mName string) (metric.Metric, error) {
 
 func (db *Database) GetAllMetrics() ([]metric.Metric, error) {
 	allMetrics := make([]metric.Metric, 0)
-	var (
-		delta sql.NullInt64
-		value sql.NullFloat64
-	)
-	rows, err := db.DB.QueryContext(context.Background(),
+	rows, err := db.DB.QueryContext(context.TODO(),
 		"SELECT id, type, delta, value FROM metrics ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var m metric.Metric
+		var (
+			m     metric.Metric
+			delta sql.NullInt64
+			value sql.NullFloat64
+		)
 		if err := rows.Scan(&m.ID, &m.MType, &delta, &value); err != nil {
 			return nil, err
 		}

@@ -34,6 +34,15 @@ func (ms *MemStorage) PutMetric(m metric.Metric) error {
 	return nil
 }
 
+func (ms *MemStorage) PutBatch(metrics []metric.Metric) error {
+	for _, m := range metrics {
+		if err := ms.PutMetric(m); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (ms *MemStorage) GetMetric(mName string) (metric.Metric, error) {
 	m, ok := ms.metrics[mName]
 	if !ok {
