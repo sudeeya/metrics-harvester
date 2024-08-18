@@ -28,10 +28,7 @@ func main() {
 	var repository repo.Repository
 	switch {
 	case cfg.DatabaseDSN != "":
-		repository, err = database.NewDatabase(cfg.DatabaseDSN)
-		if err != nil {
-			logger.Fatal(err.Error())
-		}
+		repository = database.NewDatabase(cfg.DatabaseDSN)
 	default:
 		repository = storage.NewMemStorage()
 	}
