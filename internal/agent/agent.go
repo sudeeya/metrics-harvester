@@ -41,7 +41,7 @@ func initializeBackoffSchedule(logger *zap.Logger, cfg *Config) []time.Duration 
 		if err != nil {
 			logger.Fatal(err.Error())
 		}
-		backoffSchedule[i] = time.Duration(value) * time.Millisecond
+		backoffSchedule[i] = time.Duration(value) * time.Second
 	}
 	return backoffSchedule
 }
@@ -76,12 +76,12 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 		i++
 	}
 	for _, backoff := range a.backoffSchedule {
-		err := a.trySend(mSlice)
-		if err == nil {
-			break
+		if err := a.trySend(mSlice); err != nil {
+			a.logger.Error(err.Error())
+			time.Sleep(backoff)
+			continue
 		}
-		a.logger.Error(err.Error())
-		time.Sleep(backoff)
+		return
 	}
 }
 
