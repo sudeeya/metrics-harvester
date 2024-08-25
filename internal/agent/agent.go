@@ -2,6 +2,9 @@ package agent
 
 import (
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -99,12 +102,20 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 	if err != nil {
 		return err
 	}
-	response, err := a.client.R().
+	body := buf.Bytes()
+	request := a.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Accept-Encoding", "gzip").
-		SetBody(buf.Bytes()).
-		Post("/updates/")
+		SetBody(body)
+	if a.cfg.Key != "" {
+		h := hmac.New(sha256.New, []byte(a.cfg.Key))
+		if _, err := h.Write(body); err != nil {
+			return err
+		}
+		request.SetHeader("HashSHA256", hex.EncodeToString(h.Sum(nil)))
+	}
+	response, err := request.Post("/updates/")
 	if err != nil {
 		return err
 	}

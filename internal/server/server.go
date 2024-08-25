@@ -36,6 +36,7 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	addRoutes(logger, repository, router)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
+	handler = middleware.WithSigning([]byte(cfg.Key), handler)
 	handler = middleware.WithLogging(logger, handler)
 	return &Server{
 		cfg:        cfg,

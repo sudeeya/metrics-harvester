@@ -1,8 +1,11 @@
 package middleware
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"net/http"
 )
 
@@ -16,8 +19,8 @@ func (w hmacResponseWriter) Write(b []byte) (int, error) {
 	if _, err := h.Write(b); err != nil {
 		return 0, err
 	}
-	w.Header().Set("HashSHA256", string(h.Sum(nil)))
-	return w.Write(b)
+	w.Header().Set("HashSHA256", hex.EncodeToString(h.Sum(nil)))
+	return w.ResponseWriter.Write(b)
 }
 
 func WithSigning(key []byte, handler http.Handler) http.Handler {
@@ -26,9 +29,13 @@ func WithSigning(key []byte, handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
-		expected := []byte(r.Header.Get("HashSHA256"))
-		var body []byte
-		if _, err := r.Body.Read(body); err != nil {
+		expected, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -42,6 +49,7 @@ func WithSigning(key []byte, handler http.Handler) http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		handler.ServeHTTP(hmacResponseWriter{ResponseWriter: w, key: key}, r)
 	}
 	return http.HandlerFunc(signFunc)
