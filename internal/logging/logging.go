@@ -19,6 +19,5 @@ func NewLogger(logLevel string) (*zap.Logger, error) {
 	default:
 		log.Fatalf("unknown log level: %s", logLevel)
 	}
-	logConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	return logConfig.Build()
 }

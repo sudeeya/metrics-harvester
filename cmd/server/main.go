@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/sudeeya/metrics-harvester/internal/logging"
+	repo "github.com/sudeeya/metrics-harvester/internal/repository"
+	"github.com/sudeeya/metrics-harvester/internal/repository/database"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"github.com/sudeeya/metrics-harvester/internal/server"
 )
@@ -23,8 +25,14 @@ func main() {
 			log.Print(err)
 		}
 	}()
-	memStorage := storage.NewMemStorage()
+	var repository repo.Repository
+	switch {
+	case cfg.DatabaseDSN != "":
+		repository = database.NewDatabase(cfg.DatabaseDSN)
+	default:
+		repository = storage.NewMemStorage()
+	}
 	logger.Info("Starting metrics-harvester")
-	server := server.NewServer(logger, cfg, memStorage)
+	server := server.NewServer(logger, cfg, repository)
 	server.Run()
 }
