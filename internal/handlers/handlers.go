@@ -102,7 +102,7 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 
 func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		switch v := repository.(Type) {
+		switch v := repository.(type) {
 		case *database.Database:
 			if err := databaseResponse(v, w); err != nil {
 				logger.Error(err.Error())
