@@ -100,9 +100,9 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 		return err
 	}
 	response, err := a.client.R().
-		SetHeader("content-type", "application/json").
-		SetHeader("content-encoding", "gzip").
-		SetHeader("accept-encoding", "gzip").
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip").
 		SetBody(buf.Bytes()).
 		Post("/updates/")
 	if err != nil {

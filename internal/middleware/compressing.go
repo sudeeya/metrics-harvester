@@ -18,11 +18,11 @@ func (w gzipResponseWriter) Write(b []byte) (int, error) {
 
 func WithCompressing(handler http.Handler) http.Handler {
 	compressFunc := func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("accept-encoding"), "gzip") {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			handler.ServeHTTP(w, r)
 			return
 		}
-		w.Header().Set("content-encoding", "gzip")
+		w.Header().Set("Content-Encoding", "gzip")
 		gzipWriter, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
