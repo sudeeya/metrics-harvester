@@ -1,14 +1,11 @@
 package handlers
 
 import (
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"html/template"
-	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -165,12 +162,7 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m metric.Metric
-		body, err := decompressIfNeeded(r)
-		if err != nil {
-			responseOnError(logger, err, w, http.StatusInternalServerError)
-			return
-		}
-		if err := json.NewDecoder(body).Decode(&m); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
@@ -180,7 +172,7 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		m, err = repository.GetMetric(m.ID)
+		m, err := repository.GetMetric(m.ID)
 		if err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
@@ -194,12 +186,7 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []metric.Metric
-		body, err := decompressIfNeeded(r)
-		if err != nil {
-			responseOnError(logger, err, w, http.StatusInternalServerError)
-			return
-		}
-		if err := json.NewDecoder(body).Decode(&metrics); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
@@ -210,13 +197,6 @@ func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 	}
-}
-
-func decompressIfNeeded(r *http.Request) (io.Reader, error) {
-	if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-		return gzip.NewReader(r.Body)
-	}
-	return r.Body, nil
 }
 
 func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {

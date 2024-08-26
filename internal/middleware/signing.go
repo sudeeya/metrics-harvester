@@ -29,7 +29,12 @@ func WithSigning(key []byte, handler http.Handler) http.Handler {
 			handler.ServeHTTP(w, r)
 			return
 		}
-		expected, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+		hexHash := r.Header.Get("HashSHA256")
+		if hexHash == "" {
+			handler.ServeHTTP(w, r)
+			return
+		}
+		expected, err := hex.DecodeString(hexHash)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
