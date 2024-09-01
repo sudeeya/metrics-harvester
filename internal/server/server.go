@@ -83,43 +83,8 @@ func initializeRepository(ctx context.Context, logger *zap.Logger, cfg *Config, 
 			for _, m := range savedMetrics {
 				repository.PutMetric(ctx, m)
 			}
-		} else {
-			logger.Info("Initializing nessessory metrics")
-			initializeDefault(ctx, repository)
 		}
 	}
-}
-
-func initializeDefault(ctx context.Context, repository repo.Repository) {
-	repository.PutMetric(ctx, metric.Metric{ID: "Alloc", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "BuckHashSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "Frees", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "GCCPUFraction", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "GCSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapAlloc", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapIdle", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapObjects", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapReleased", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "HeapSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "LastGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "Lookups", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "MCacheInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "MCacheSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "MSpanInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "MSpanSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "Mallocs", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "NextGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "NumForcedGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "NumGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "OtherSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "PauseTotalNs", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "PollCount", MType: metric.Counter, Delta: new(int64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "RandomValue", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "StackInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "StackSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "Sys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(ctx, metric.Metric{ID: "TotalAlloc", MType: metric.Gauge, Value: new(float64)})
 }
 
 func addRoutes(ctx context.Context, logger *zap.Logger, repository repo.Repository, router chi.Router) {
