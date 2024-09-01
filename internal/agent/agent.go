@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -56,34 +55,31 @@ func (a *Agent) Run() {
 		metrics      = NewMetrics()
 		pollTicker   = time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
 		reportTicker = time.NewTicker(time.Duration(a.cfg.ReportInterval) * time.Second)
-		rwMutex      sync.RWMutex
 	)
 	go func() {
 		for range pollTicker.C {
 			a.logger.Info("Updating metric values")
-			rwMutex.Lock()
-			UpdateMetrics(metrics)
-			rwMutex.Unlock()
+			go func() {
+				metrics.Update()
+			}()
+			go func() {
+				if err := metrics.UpdatePSUtil(); err != nil {
+					a.logger.Error(err.Error())
+				}
+			}()
 		}
 	}()
 	go func() {
 		for range reportTicker.C {
 			a.logger.Info("Sending all metrics")
-			rwMutex.RLock()
 			a.SendMetrics(metrics)
-			rwMutex.RUnlock()
 		}
 	}()
 	select {}
 }
 
 func (a *Agent) SendMetrics(metrics *Metrics) {
-	mSlice := make([]metric.Metric, len(metrics.Values))
-	i := 0
-	for _, m := range metrics.Values {
-		mSlice[i] = *m
-		i++
-	}
+	mSlice := metrics.List()
 	for _, backoff := range a.backoffSchedule {
 		if err := a.trySend(mSlice); err != nil {
 			a.logger.Error(err.Error())

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
 type MemStorage struct {
+	mutex   sync.RWMutex
 	metrics map[string]metric.Metric
 }
 
@@ -20,6 +22,8 @@ func NewMemStorage() *MemStorage {
 }
 
 func (ms *MemStorage) PutMetric(ctx context.Context, m metric.Metric) error {
+	ms.mutex.Lock()
+	defer ms.mutex.Unlock()
 	value, ok := ms.metrics[m.ID]
 	if !ok {
 		ms.metrics[m.ID] = m
@@ -45,6 +49,8 @@ func (ms *MemStorage) PutBatch(ctx context.Context, metrics []metric.Metric) err
 }
 
 func (ms *MemStorage) GetMetric(ctx context.Context, mName string) (metric.Metric, error) {
+	ms.mutex.RLock()
+	defer ms.mutex.RUnlock()
 	m, ok := ms.metrics[mName]
 	if !ok {
 		return metric.Metric{}, fmt.Errorf("metric %s is missing", mName)
@@ -53,6 +59,8 @@ func (ms *MemStorage) GetMetric(ctx context.Context, mName string) (metric.Metri
 }
 
 func (ms *MemStorage) GetAllMetrics(ctx context.Context) ([]metric.Metric, error) {
+	ms.mutex.RLock()
+	defer ms.mutex.RUnlock()
 	allMetrics := make([]metric.Metric, len(ms.metrics))
 	i := 0
 	for _, value := range ms.metrics {
