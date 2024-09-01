@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -18,7 +19,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) PutMetric(m metric.Metric) error {
+func (ms *MemStorage) PutMetric(ctx context.Context, m metric.Metric) error {
 	value, ok := ms.metrics[m.ID]
 	if !ok {
 		ms.metrics[m.ID] = m
@@ -34,16 +35,16 @@ func (ms *MemStorage) PutMetric(m metric.Metric) error {
 	return nil
 }
 
-func (ms *MemStorage) PutBatch(metrics []metric.Metric) error {
+func (ms *MemStorage) PutBatch(ctx context.Context, metrics []metric.Metric) error {
 	for _, m := range metrics {
-		if err := ms.PutMetric(m); err != nil {
+		if err := ms.PutMetric(ctx, m); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (ms *MemStorage) GetMetric(mName string) (metric.Metric, error) {
+func (ms *MemStorage) GetMetric(ctx context.Context, mName string) (metric.Metric, error) {
 	m, ok := ms.metrics[mName]
 	if !ok {
 		return metric.Metric{}, fmt.Errorf("metric %s is missing", mName)
@@ -51,7 +52,7 @@ func (ms *MemStorage) GetMetric(mName string) (metric.Metric, error) {
 	return m, nil
 }
 
-func (ms *MemStorage) GetAllMetrics() ([]metric.Metric, error) {
+func (ms *MemStorage) GetAllMetrics(ctx context.Context) ([]metric.Metric, error) {
 	allMetrics := make([]metric.Metric, len(ms.metrics))
 	i := 0
 	for _, value := range ms.metrics {

@@ -106,8 +106,7 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 	request := a.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetHeader("Accept-Encoding", "gzip").
-		SetBody(body)
+		SetHeader("Accept-Encoding", "gzip")
 	if a.cfg.Key != "" {
 		h := hmac.New(sha256.New, []byte(a.cfg.Key))
 		if _, err := h.Write(body); err != nil {
@@ -115,7 +114,9 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 		}
 		request.SetHeader("HashSHA256", hex.EncodeToString(h.Sum(nil)))
 	}
-	response, err := request.Post("/updates/")
+	response, err := request.
+		SetBody(body).
+		Post("/updates/")
 	if err != nil {
 		return err
 	}

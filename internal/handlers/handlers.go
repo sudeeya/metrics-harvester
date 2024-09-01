@@ -47,9 +47,9 @@ func responseOnError(logger *zap.Logger, err error, w http.ResponseWriter, statu
 	w.WriteHeader(statusCode)
 }
 
-func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewAllMetricsHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		allMetrics, err := repository.GetAllMetrics()
+		allMetrics, err := repository.GetAllMetrics(ctx)
 		if err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
@@ -73,7 +73,7 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
 	}
 }
 
-func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewValueHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType = chi.URLParam(r, "metricType")
@@ -81,7 +81,7 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 		)
 		switch metricType {
 		case metric.Gauge, metric.Counter:
-			m, err := repository.GetMetric(metricName)
+			m, err := repository.GetMetric(ctx, metricName)
 			if err != nil {
 				responseOnError(logger, err, w, http.StatusNotFound)
 				return
@@ -97,11 +97,11 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 	}
 }
 
-func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewPingHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch v := repository.(type) {
 		case *database.Database:
-			if err := databaseResponse(v, w); err != nil {
+			if err := databaseResponse(ctx, v, w); err != nil {
 				logger.Error(err.Error())
 			}
 		case *storage.MemStorage:
@@ -110,8 +110,8 @@ func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.Handler
 	}
 }
 
-func databaseResponse(db *database.Database, w http.ResponseWriter) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+func databaseResponse(ctx context.Context, db *database.Database, w http.ResponseWriter) error {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	if err := db.DB.PingContext(ctx); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func databaseResponse(db *database.Database, w http.ResponseWriter) error {
 	return nil
 }
 
-func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewUpdateHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
 			metricType  = chi.URLParam(r, "metricType")
@@ -135,7 +135,7 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 				responseOnError(logger, err, w, http.StatusBadRequest)
 				return
 			}
-			if err := repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Value: &value}); err != nil {
+			if err := repository.PutMetric(ctx, metric.Metric{ID: metricName, MType: metricType, Value: &value}); err != nil {
 				responseOnError(logger, err, w, http.StatusInternalServerError)
 				return
 			}
@@ -147,7 +147,7 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 				responseOnError(logger, err, w, http.StatusBadRequest)
 				return
 			}
-			if err := repository.PutMetric(metric.Metric{ID: metricName, MType: metricType, Delta: &delta}); err != nil {
+			if err := repository.PutMetric(ctx, metric.Metric{ID: metricName, MType: metricType, Delta: &delta}); err != nil {
 				responseOnError(logger, err, w, http.StatusInternalServerError)
 				return
 			}
@@ -159,20 +159,20 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 	}
 }
 
-func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewJSONUpdateHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m metric.Metric
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
-		if err := repository.PutMetric(m); err != nil {
+		if err := repository.PutMetric(ctx, m); err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		m, err := repository.GetMetric(m.ID)
+		m, err := repository.GetMetric(ctx, m.ID)
 		if err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
@@ -183,14 +183,14 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 	}
 }
 
-func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewBatchHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []metric.Metric
 		if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
-		if err := repository.PutBatch(metrics); err != nil {
+		if err := repository.PutBatch(ctx, metrics); err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
 		}
@@ -199,7 +199,7 @@ func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 	}
 }
 
-func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
+func NewJSONValueHandler(ctx context.Context, logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var requestedMetric metric.Metric
 		if err := json.NewDecoder(r.Body).Decode(&requestedMetric); err != nil {
@@ -207,7 +207,7 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
-		m, err := repository.GetMetric(requestedMetric.ID)
+		m, err := repository.GetMetric(ctx, requestedMetric.ID)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			responseOnError(logger, err, w, http.StatusNotFound)
