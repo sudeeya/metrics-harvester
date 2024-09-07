@@ -6,8 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -55,7 +58,9 @@ func (a *Agent) Run() {
 		metrics      = NewMetrics()
 		pollTicker   = time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
 		reportTicker = time.NewTicker(time.Duration(a.cfg.ReportInterval) * time.Second)
+		sigChan      = make(chan os.Signal, 1)
 	)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		for range pollTicker.C {
 			a.logger.Info("Updating metric values")
@@ -74,6 +79,11 @@ func (a *Agent) Run() {
 			a.logger.Info("Sending all metrics")
 			a.SendMetrics(metrics)
 		}
+	}()
+	go func() {
+		<-sigChan
+		a.logger.Info("Agent is shutting down")
+		a.Shutdown()
 	}()
 	select {}
 }
@@ -124,4 +134,8 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 	}
 	defer response.RawResponse.Body.Close()
 	return nil
+}
+
+func (a *Agent) Shutdown() {
+	os.Exit(0)
 }
