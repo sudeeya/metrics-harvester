@@ -2,11 +2,14 @@ package database
 
 import (
 	"context"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
+
+const limitInSeconds = 10
 
 const (
 	CreateMetricsTable = `
@@ -45,6 +48,8 @@ func NewDatabase(dsn string) *Database {
 }
 
 func (db *Database) PutMetric(ctx context.Context, m metric.Metric) error {
+	ctx, cancel := context.WithTimeout(ctx, limitInSeconds*time.Second)
+	defer cancel()
 	switch m.MType {
 	case metric.Gauge:
 		_, err := db.ExecContext(ctx, insertGauge, m.ID, m.MType, *m.Value)
@@ -61,6 +66,8 @@ func (db *Database) PutMetric(ctx context.Context, m metric.Metric) error {
 }
 
 func (db *Database) PutBatch(ctx context.Context, metrics []metric.Metric) error {
+	ctx, cancel := context.WithTimeout(ctx, limitInSeconds*time.Second)
+	defer cancel()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -94,6 +101,8 @@ func (db *Database) PutBatch(ctx context.Context, metrics []metric.Metric) error
 
 func (db *Database) GetMetric(ctx context.Context, mName string) (metric.Metric, error) {
 	var dbm DBMetric
+	ctx, cancel := context.WithTimeout(ctx, limitInSeconds*time.Second)
+	defer cancel()
 	if err := db.GetContext(ctx, &dbm,
 		"SELECT id, type, delta, value FROM metrics WHERE id = $1", mName); err != nil {
 		return metric.Metric{}, err
@@ -103,6 +112,8 @@ func (db *Database) GetMetric(ctx context.Context, mName string) (metric.Metric,
 
 func (db *Database) GetAllMetrics(ctx context.Context) ([]metric.Metric, error) {
 	var dbMetrics []DBMetric
+	ctx, cancel := context.WithTimeout(ctx, limitInSeconds*time.Second)
+	defer cancel()
 	if err := db.SelectContext(ctx, &dbMetrics,
 		"SELECT id, type, delta, value FROM metrics ORDER BY id"); err != nil {
 		return nil, err

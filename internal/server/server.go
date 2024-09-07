@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +20,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const limitInSeconds = 10
+
 type Server struct {
 	cfg        *Config
 	logger     *zap.Logger
@@ -27,14 +30,13 @@ type Server struct {
 }
 
 func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Server {
-	ctx := context.Background()
 	logger.Info("Initializing storage file")
 	initializeStorageFile(logger, cfg)
 	logger.Info("Initializing repository")
-	initializeRepository(ctx, logger, cfg, repository)
+	initializeRepository(logger, cfg, repository)
 	router := chi.NewRouter()
 	logger.Info("Initializing routes")
-	addRoutes(ctx, logger, repository, router)
+	addRoutes(logger, repository, router)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
 	handler = middleware.WithSigning([]byte(cfg.Key), handler)
@@ -62,12 +64,17 @@ func initializeStorageFile(logger *zap.Logger, cfg *Config) {
 	}
 }
 
-func initializeRepository(ctx context.Context, logger *zap.Logger, cfg *Config, repository repo.Repository) {
+func initializeRepository(logger *zap.Logger, cfg *Config, repository repo.Repository) {
 	switch v := repository.(type) {
 	case *database.Database:
 		logger.Info("Initializing database")
+		ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
+		defer cancel()
 		if _, err := v.DB.ExecContext(ctx, database.CreateMetricsTable); err != nil {
 			logger.Fatal(err.Error())
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			logger.Error(ctx.Err().Error())
 		}
 	case *storage.MemStorage:
 		if cfg.Restore {
@@ -80,6 +87,7 @@ func initializeRepository(ctx context.Context, logger *zap.Logger, cfg *Config, 
 			if err := json.Unmarshal(savedData, &savedMetrics); err != nil {
 				logger.Fatal(err.Error())
 			}
+			ctx := context.Background()
 			for _, m := range savedMetrics {
 				repository.PutMetric(ctx, m)
 			}
@@ -87,15 +95,15 @@ func initializeRepository(ctx context.Context, logger *zap.Logger, cfg *Config, 
 	}
 }
 
-func addRoutes(ctx context.Context, logger *zap.Logger, repository repo.Repository, router chi.Router) {
-	router.Get("/value/{metricType}/{metricName}", handlers.NewValueHandler(ctx, logger, repository))
-	router.Get("/ping", handlers.NewPingHandler(ctx, logger, repository))
-	router.Get("/", handlers.NewAllMetricsHandler(ctx, logger, repository))
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewUpdateHandler(ctx, logger, repository))
+func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
+	router.Get("/value/{metricType}/{metricName}", handlers.NewValueHandler(logger, repository))
+	router.Get("/ping", handlers.NewPingHandler(logger, repository))
+	router.Get("/", handlers.NewAllMetricsHandler(logger, repository))
+	router.Post("/update/{metricType}/{metricName}/{metricValue}", handlers.NewUpdateHandler(logger, repository))
 	router.Post("/update/{metricType}/", http.NotFound)
-	router.Post("/update/", handlers.NewJSONUpdateHandler(ctx, logger, repository))
-	router.Post("/updates/", handlers.NewBatchHandler(ctx, logger, repository))
-	router.Post("/value/", handlers.NewJSONValueHandler(ctx, logger, repository))
+	router.Post("/update/", handlers.NewJSONUpdateHandler(logger, repository))
+	router.Post("/updates/", handlers.NewBatchHandler(logger, repository))
+	router.Post("/value/", handlers.NewJSONValueHandler(logger, repository))
 	router.Post("/", handlers.BadRequest)
 }
 
@@ -124,7 +132,15 @@ func (s *Server) Run() {
 }
 
 func (s *Server) StoreMetricsToFile() {
-	metrics, _ := s.repository.GetAllMetrics(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
+	defer cancel()
+	metrics, err := s.repository.GetAllMetrics(ctx)
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		s.logger.Error(ctx.Err().Error())
+	}
+	if err != nil {
+		s.logger.Fatal(err.Error())
+	}
 	data, err := json.MarshalIndent(metrics, "", "\t")
 	if err != nil {
 		s.logger.Fatal(err.Error())
