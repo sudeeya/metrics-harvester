@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -16,7 +17,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"go.uber.org/zap"
-	"go.uber.org/zap/buffer"
 )
 
 type Agent struct {
@@ -101,7 +101,7 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 }
 
 func (a *Agent) trySend(mSlice []metric.Metric) error {
-	var buf buffer.Buffer
+	var buf bytes.Buffer
 	gzipWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 	if err != nil {
 		return err
