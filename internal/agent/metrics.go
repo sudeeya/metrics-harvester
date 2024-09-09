@@ -3,6 +3,7 @@ package agent
 import (
 	"math/rand/v2"
 	"runtime"
+	"sync"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
@@ -10,6 +11,7 @@ import (
 )
 
 type Metrics struct {
+	mutex  sync.Mutex
 	values map[string]*metric.Metric
 }
 
@@ -63,6 +65,8 @@ func (m *Metrics) List() []metric.Metric {
 func (m *Metrics) Update() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.values["Alloc"].Update(float64(memStats.Alloc))
 	m.values["BuckHashSys"].Update(float64(memStats.BuckHashSys))
 	m.values["Frees"].Update(float64(memStats.Frees))
@@ -103,6 +107,8 @@ func (m *Metrics) UpdatePSUtil() error {
 	if err != nil {
 		return err
 	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.values["CPUutilization1"].Update(cpuStats[0])
 	m.values["FreeMemory"].Update(float64(memStats.Free))
 	m.values["TotalMemory"].Update(float64(memStats.Total))
