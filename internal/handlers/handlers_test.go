@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -40,8 +41,8 @@ func TestValueHandler(t *testing.T) {
 		ts     = httptest.NewServer(router)
 	)
 	defer ts.Close()
-	ms.PutMetric(metric.Metric{ID: "gauge", MType: metric.Gauge, Value: float64Ptr(12.12)})
-	ms.PutMetric(metric.Metric{ID: "counter", MType: metric.Counter, Delta: int64Ptr(12)})
+	ms.PutMetric(context.Background(), metric.Metric{ID: "gauge", MType: metric.Gauge, Value: float64Ptr(12.12)})
+	ms.PutMetric(context.Background(), metric.Metric{ID: "counter", MType: metric.Counter, Delta: int64Ptr(12)})
 	router.Get("/value/{metricType}/{metricName}", NewValueHandler(l, ms))
 	type result struct {
 		code int

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +19,8 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
 	"go.uber.org/zap"
 )
+
+const limitInSeconds = 10
 
 type Server struct {
 	cfg        *Config
@@ -36,6 +39,7 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	addRoutes(logger, repository, router)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
+	handler = middleware.WithSigning([]byte(cfg.Key), handler)
 	handler = middleware.WithLogging(logger, handler)
 	return &Server{
 		cfg:        cfg,
@@ -64,8 +68,13 @@ func initializeRepository(logger *zap.Logger, cfg *Config, repository repo.Repos
 	switch v := repository.(type) {
 	case *database.Database:
 		logger.Info("Initializing database")
-		if _, err := v.DB.ExecContext(context.Background(), database.CreateMetricsTable); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
+		defer cancel()
+		if _, err := v.DB.ExecContext(ctx, database.CreateMetricsTable); err != nil {
 			logger.Fatal(err.Error())
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			logger.Error(ctx.Err().Error())
 		}
 	case *storage.MemStorage:
 		if cfg.Restore {
@@ -78,46 +87,12 @@ func initializeRepository(logger *zap.Logger, cfg *Config, repository repo.Repos
 			if err := json.Unmarshal(savedData, &savedMetrics); err != nil {
 				logger.Fatal(err.Error())
 			}
+			ctx := context.Background()
 			for _, m := range savedMetrics {
-				repository.PutMetric(m)
+				repository.PutMetric(ctx, m)
 			}
-		} else {
-			logger.Info("Initializing nessessory metrics")
-			initializeDefault(repository)
 		}
 	}
-}
-
-func initializeDefault(repository repo.Repository) {
-	repository.PutMetric(metric.Metric{ID: "Alloc", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "BuckHashSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "Frees", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "GCCPUFraction", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "GCSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapAlloc", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapIdle", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapObjects", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapReleased", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "HeapSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "LastGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "Lookups", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "MCacheInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "MCacheSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "MSpanInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "MSpanSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "Mallocs", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "NextGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "NumForcedGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "NumGC", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "OtherSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "PauseTotalNs", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "PollCount", MType: metric.Counter, Delta: new(int64)})
-	repository.PutMetric(metric.Metric{ID: "RandomValue", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "StackInuse", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "StackSys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "Sys", MType: metric.Gauge, Value: new(float64)})
-	repository.PutMetric(metric.Metric{ID: "TotalAlloc", MType: metric.Gauge, Value: new(float64)})
 }
 
 func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router) {
@@ -157,7 +132,15 @@ func (s *Server) Run() {
 }
 
 func (s *Server) StoreMetricsToFile() {
-	metrics, _ := s.repository.GetAllMetrics()
+	ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
+	defer cancel()
+	metrics, err := s.repository.GetAllMetrics(ctx)
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		s.logger.Error(ctx.Err().Error())
+	}
+	if err != nil {
+		s.logger.Fatal(err.Error())
+	}
 	data, err := json.MarshalIndent(metrics, "", "\t")
 	if err != nil {
 		s.logger.Fatal(err.Error())

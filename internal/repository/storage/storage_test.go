@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -62,7 +63,7 @@ func TestPutMetric(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test.ms.PutMetric(test.m)
+		test.ms.PutMetric(context.Background(), test.m)
 		require.EqualValues(t, test.result.metrics[test.mName].GetValue(), test.ms.metrics[test.mName].GetValue())
 	}
 }
@@ -94,7 +95,7 @@ func TestGetMetric_Existing(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		m, err := test.ms.GetMetric(test.mName)
+		m, err := test.ms.GetMetric(context.Background(), test.mName)
 		require.Nil(t, err)
 		require.EqualValues(t, test.result.GetValue(), m.GetValue())
 	}
@@ -116,7 +117,7 @@ func TestGetMetric_NotExisting(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		_, err := test.ms.GetMetric(test.mName)
+		_, err := test.ms.GetMetric(context.Background(), test.mName)
 		require.NotNil(t, err)
 	}
 }
