@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
@@ -21,6 +23,8 @@ import (
 )
 
 const limitInSeconds = 10
+
+const pprofAddress = "localhost:6060"
 
 type Server struct {
 	cfg        *Config
@@ -127,6 +131,11 @@ func (s *Server) Run() {
 		<-sigChan
 		s.logger.Info("Server is shutting down")
 		s.Shutdown()
+	}()
+	go func() {
+		if err := http.ListenAndServe(pprofAddress, nil); err != nil {
+			s.logger.Fatal(err.Error())
+		}
 	}()
 	select {}
 }
