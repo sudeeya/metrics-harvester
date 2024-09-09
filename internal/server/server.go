@@ -24,7 +24,7 @@ import (
 
 const limitInSeconds = 10
 
-const pprofAddress = "localhost:6060"
+const pprofAddress = ":6060"
 
 type Server struct {
 	cfg        *Config
