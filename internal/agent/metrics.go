@@ -11,7 +11,7 @@ import (
 )
 
 type Metrics struct {
-	mutex  sync.Mutex
+	mutex  sync.RWMutex
 	values map[string]*metric.Metric
 }
 
@@ -56,6 +56,8 @@ func NewMetrics() *Metrics {
 
 func (m *Metrics) List() []metric.Metric {
 	metrics := make([]metric.Metric, 0)
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	for _, m := range m.values {
 		metrics = append(metrics, *m)
 	}
