@@ -6,6 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.2.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-resty/resty/v2 v2.14.0
+	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/shirou/gopsutil/v4 v4.24.8
