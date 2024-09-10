@@ -7,6 +7,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
+	"github.com/sudeeya/metrics-harvester/internal/repository"
 )
 
 const limitInSeconds = 10
@@ -35,6 +36,8 @@ DO UPDATE SET
 	delta = metrics.delta + EXCLUDED.delta;
 `
 )
+
+var _ repository.Repository = (*Database)(nil)
 
 type Database struct {
 	*sqlx.DB

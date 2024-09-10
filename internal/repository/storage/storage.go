@@ -8,7 +8,10 @@ import (
 	"sync"
 
 	"github.com/sudeeya/metrics-harvester/internal/metric"
+	"github.com/sudeeya/metrics-harvester/internal/repository"
 )
+
+var _ repository.Repository = (*MemStorage)(nil)
 
 type MemStorage struct {
 	mutex   sync.RWMutex
