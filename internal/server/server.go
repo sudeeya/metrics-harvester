@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,8 +24,6 @@ import (
 )
 
 const limitInSeconds = 10
-
-const pprofAddress = ":6060"
 
 type Server struct {
 	cfg        *Config
@@ -133,7 +132,7 @@ func (s *Server) Run() {
 		s.Shutdown()
 	}()
 	go func() {
-		if err := http.ListenAndServe(pprofAddress, nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.cfg.ProfilerPort), nil); err != nil {
 			s.logger.Fatal(err.Error())
 		}
 	}()

@@ -13,6 +13,7 @@ const (
 	defaultLogLevel        string = "info"
 	defaultStoreInterval   int64  = 300
 	defaultFileStoragePath string = "metrics.json"
+	defaultProfilerPort    int64  = 6060
 	defaultRestore         bool   = true
 )
 
@@ -23,6 +24,7 @@ type Config struct {
 	LogLevel        string `env:"LOG_LEVEL"`
 	StoreInterval   int64  `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	ProfilerPort    int64  `env:"PROFILER_PORT"`
 	Restore         bool   `env:"RESTORE"`
 }
 
@@ -34,6 +36,7 @@ func NewConfig() (*Config, error) {
 	flag.StringVar(&cfg.LogLevel, "l", defaultLogLevel, "Log level: info, error, fatal")
 	flag.Int64Var(&cfg.StoreInterval, "i", defaultStoreInterval, "The time interval in seconds after which metric values will be saved to the file")
 	flag.StringVar(&cfg.FileStoragePath, "f", defaultFileStoragePath, "Path to the file where the metric values are saved")
+	flag.Int64Var(&cfg.ProfilerPort, "p", defaultProfilerPort, "The port on which pprof is running")
 	flag.BoolVar(&cfg.Restore, "r", defaultRestore, "Determines whether previously saved values from a file will be loaded when the server starts")
 	flag.Parse()
 	if err := env.Parse(&cfg); err != nil {
