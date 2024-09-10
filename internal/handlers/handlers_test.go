@@ -9,9 +9,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
-	"go.uber.org/zap"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {

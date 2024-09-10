@@ -15,8 +15,9 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"go.uber.org/zap"
+
+	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
 type Agent struct {

@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
+
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/repository"
 )

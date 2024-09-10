@@ -14,13 +14,14 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/middleware"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
 	"github.com/sudeeya/metrics-harvester/internal/repository/database"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
-	"go.uber.org/zap"
 )
 
 const limitInSeconds = 10
