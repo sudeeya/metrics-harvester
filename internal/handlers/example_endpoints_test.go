@@ -49,9 +49,9 @@ func Example() {
 
 	// Endpoint /updates/
 	var (
-		c2Delta int64   = 42
-		g1Value float64 = 12.12
-		batch           = []metric.Metric{
+		c2Delta int64 = 42
+		g1Value       = 12.12
+		batch         = []metric.Metric{
 			{ID: "c2", MType: metric.Counter, Delta: &c2Delta},
 			{ID: "g1", MType: metric.Gauge, Value: &g1Value},
 		}
