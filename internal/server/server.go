@@ -108,7 +108,6 @@ func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router
 	router.Post("/update/", handlers.NewJSONUpdateHandler(logger, repository))
 	router.Post("/updates/", handlers.NewBatchHandler(logger, repository))
 	router.Post("/value/", handlers.NewJSONValueHandler(logger, repository))
-	router.Post("/", handlers.BadRequest)
 }
 
 func (s *Server) Run() {

@@ -6,6 +6,7 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
+// DBMetric is an auxiliary structure into which the database response is written.
 type DBMetric struct {
 	ID    string          `db:"id"`
 	MType string          `db:"type"`
@@ -13,6 +14,7 @@ type DBMetric struct {
 	Value sql.NullFloat64 `db:"value"`
 }
 
+// ToMetric converts DBMetric to metric.Metric.
 func (dbm DBMetric) ToMetric() metric.Metric {
 	var m metric.Metric
 	m.ID = dbm.ID

@@ -1,3 +1,4 @@
+// Package handlers provides a collection of HTTP handlers.
 package handlers
 
 import (
@@ -51,10 +52,14 @@ func responseOnError(logger *zap.Logger, err error, w http.ResponseWriter, statu
 	w.WriteHeader(statusCode)
 }
 
+// NewAllMetricsHandler returns an http.HandlerFunc that generates
+// an HTML list of all metrics from the Repository and writes it to the response.
+// If an error occurs while retrieving the metrics, it logs the error and returns an appropriate HTTP status code.
 func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
 		defer cancel()
+
 		allMetrics, err := repository.GetAllMetrics(ctx)
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			logger.Error(ctx.Err().Error())
@@ -63,6 +68,7 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
 		}
+
 		metrics := make([]htmlMetric, len(allMetrics))
 		for i, m := range allMetrics {
 			metrics[i].ID = m.ID
@@ -74,6 +80,7 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
 			Metrics: metrics,
 		}
 		t, _ := template.New("page").Parse(htmlTemplate)
+
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		if err = t.Execute(w, data); err != nil {
@@ -82,6 +89,10 @@ func NewAllMetricsHandler(logger *zap.Logger, repository repo.Repository) http.H
 	}
 }
 
+// NewValueHandler returns an http.HandlerFunc that writes the value of a specified metric to the response.
+// The metric type and name are extracted from the URL parameters.
+// If the metric type is not supported or an error occurs while retrieving the metric,
+// it logs the error and returns an appropriate HTTP status code.
 func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
@@ -95,6 +106,7 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 				responseOnError(logger, err, w, http.StatusNotFound)
 				return
 			}
+
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte(m.GetValue())); err != nil {
@@ -106,6 +118,9 @@ func NewValueHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 	}
 }
 
+// NewPingHandler returns an http.HandlerFunc that pings the database to check its availability.
+// If the repository is a database, it attempts to ping the database.
+// If the repository is an in-memory storage, it returns an error indicating that the database is not in use.
 func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch v := repository.(type) {
@@ -122,6 +137,7 @@ func NewPingHandler(logger *zap.Logger, repository repo.Repository) http.Handler
 func databaseResponse(logger *zap.Logger, db *database.Database, w http.ResponseWriter) error {
 	ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
 	defer cancel()
+
 	if err := db.DB.PingContext(ctx); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return err
@@ -129,10 +145,15 @@ func databaseResponse(logger *zap.Logger, db *database.Database, w http.Response
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		logger.Error(ctx.Err().Error())
 	}
+
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
 
+// NewUpdateHandler returns an http.HandlerFunc that updates a specified metric.
+// The metric type, name and value are extracted from the URL parameters.
+// If the metric type is not supported or an error occurs while updating the metric,
+// it logs the error and returns an appropriate HTTP status code.
 func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
@@ -147,10 +168,12 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 				responseOnError(logger, err, w, http.StatusBadRequest)
 				return
 			}
+
 			if err := repository.PutMetric(context.Background(), metric.Metric{ID: metricName, MType: metricType, Value: &value}); err != nil {
 				responseOnError(logger, err, w, http.StatusInternalServerError)
 				return
 			}
+
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 		case metric.Counter:
@@ -159,10 +182,12 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 				responseOnError(logger, err, w, http.StatusBadRequest)
 				return
 			}
+
 			if err := repository.PutMetric(context.Background(), metric.Metric{ID: metricName, MType: metricType, Delta: &delta}); err != nil {
 				responseOnError(logger, err, w, http.StatusInternalServerError)
 				return
 			}
+
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusOK)
 		default:
@@ -171,6 +196,11 @@ func NewUpdateHandler(logger *zap.Logger, repository repo.Repository) http.Handl
 	}
 }
 
+// NewJSONUpdateHandler returns an http.HandlerFunc that updates a specified metric.
+// The metric is extracted from the JSON body of the request.
+// If the metric type is not supported or an error occurs while updating the metric,
+// it logs the error and returns an appropriate HTTP status code.
+// After updating the metric, it retrieves the updated metric and returns it in the response.
 func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var m metric.Metric
@@ -178,23 +208,33 @@ func NewJSONUpdateHandler(logger *zap.Logger, repository repo.Repository) http.H
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
-		if err := repository.PutMetric(context.Background(), m); err != nil {
+
+		ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
+		defer cancel()
+
+		if err := repository.PutMetric(ctx, m); err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		m, err := repository.GetMetric(context.Background(), m.ID)
+
+		m, err := repository.GetMetric(ctx, m.ID)
 		if err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(m); err != nil {
 			logger.Error(err.Error())
 		}
 	}
 }
 
+// NewBatchHandler returns an http.HandlerFunc that updates a batch os metrics.
+// Metrics are extracted from the JSON body of the request.
+// If the metric type is not supported or an error occurs while updating the metric,
+// it logs the error and returns an appropriate HTTP status code.
 func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []metric.Metric
@@ -202,8 +242,10 @@ func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), limitInSeconds*time.Second)
 		defer cancel()
+
 		if err := repository.PutBatch(ctx, metrics); err != nil {
 			responseOnError(logger, err, w, http.StatusInternalServerError)
 			return
@@ -211,11 +253,16 @@ func NewBatchHandler(logger *zap.Logger, repository repo.Repository) http.Handle
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			logger.Error(ctx.Err().Error())
 		}
+
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
+// NewJSONValueHandler returns an http.HandlerFunc that writes the JSON of a specified metric to the response.
+// The metric type and name are extracted from the JSON body of the request.
+// If the metric type is not supported or an error occurs while updating the metric,
+// it logs the error and returns an appropriate HTTP status code.
 func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var requestedMetric metric.Metric
@@ -224,20 +271,18 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 			responseOnError(logger, err, w, http.StatusBadRequest)
 			return
 		}
+
 		m, err := repository.GetMetric(context.Background(), requestedMetric.ID)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			responseOnError(logger, err, w, http.StatusNotFound)
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(m); err != nil {
 			logger.Error(err.Error())
 		}
 	}
-}
-
-func BadRequest(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
 }

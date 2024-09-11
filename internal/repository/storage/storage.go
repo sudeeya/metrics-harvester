@@ -1,3 +1,4 @@
+// Package storage defines object that stores metrics in memory.
 package storage
 
 import (
@@ -13,6 +14,7 @@ import (
 
 var _ repository.Repository = (*MemStorage)(nil)
 
+// MemStorage implements the [Repository] interface.
 type MemStorage struct {
 	mutex   sync.RWMutex
 	metrics map[string]metric.Metric
@@ -24,9 +26,11 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+// PutMetric implements the [Repository] interface.
 func (ms *MemStorage) PutMetric(ctx context.Context, m metric.Metric) error {
 	ms.mutex.Lock()
 	defer ms.mutex.Unlock()
+
 	value, ok := ms.metrics[m.ID]
 	if !ok {
 		ms.metrics[m.ID] = m
@@ -42,6 +46,7 @@ func (ms *MemStorage) PutMetric(ctx context.Context, m metric.Metric) error {
 	return nil
 }
 
+// PutBatch implements the [Repository] interface.
 func (ms *MemStorage) PutBatch(ctx context.Context, metrics []metric.Metric) error {
 	for _, m := range metrics {
 		if err := ms.PutMetric(ctx, m); err != nil {
@@ -51,9 +56,11 @@ func (ms *MemStorage) PutBatch(ctx context.Context, metrics []metric.Metric) err
 	return nil
 }
 
+// GetMetric implements the [Repository] interface.
 func (ms *MemStorage) GetMetric(ctx context.Context, mName string) (metric.Metric, error) {
 	ms.mutex.RLock()
 	defer ms.mutex.RUnlock()
+
 	m, ok := ms.metrics[mName]
 	if !ok {
 		return metric.Metric{}, fmt.Errorf("metric %s is missing", mName)
@@ -61,9 +68,11 @@ func (ms *MemStorage) GetMetric(ctx context.Context, mName string) (metric.Metri
 	return m, nil
 }
 
+// GetAllMetrics implements the [Repository] interface.
 func (ms *MemStorage) GetAllMetrics(ctx context.Context) ([]metric.Metric, error) {
 	ms.mutex.RLock()
 	defer ms.mutex.RUnlock()
+
 	allMetrics := make([]metric.Metric, len(ms.metrics))
 	i := 0
 	for _, value := range ms.metrics {
@@ -76,6 +85,7 @@ func (ms *MemStorage) GetAllMetrics(ctx context.Context) ([]metric.Metric, error
 	return allMetrics, nil
 }
 
+// Close implements the [Repository] interface.
 func (ms *MemStorage) Close() error {
 	return nil
 }
