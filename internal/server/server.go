@@ -4,20 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
 	"github.com/sudeeya/metrics-harvester/internal/handlers"
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 	"github.com/sudeeya/metrics-harvester/internal/middleware"
 	repo "github.com/sudeeya/metrics-harvester/internal/repository"
 	"github.com/sudeeya/metrics-harvester/internal/repository/database"
 	"github.com/sudeeya/metrics-harvester/internal/repository/storage"
-	"go.uber.org/zap"
 )
 
 const limitInSeconds = 10
@@ -104,7 +108,6 @@ func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router
 	router.Post("/update/", handlers.NewJSONUpdateHandler(logger, repository))
 	router.Post("/updates/", handlers.NewBatchHandler(logger, repository))
 	router.Post("/value/", handlers.NewJSONValueHandler(logger, repository))
-	router.Post("/", handlers.BadRequest)
 }
 
 func (s *Server) Run() {
@@ -127,6 +130,11 @@ func (s *Server) Run() {
 		<-sigChan
 		s.logger.Info("Server is shutting down")
 		s.Shutdown()
+	}()
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", s.cfg.ProfilerPort), nil); err != nil {
+			s.logger.Fatal(err.Error())
+		}
 	}()
 	select {}
 }

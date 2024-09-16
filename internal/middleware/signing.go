@@ -23,12 +23,17 @@ func (w hmacResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+// WithLogging provides middleware that handles signing of HTTP requests and responses.
+// If the key is empty does nothing.
+// Otherwise, it checks the HashSHA256 header of the request.
+// If the signature is incorrect, the response status code is 400 (Bad Request).
 func WithSigning(key []byte, handler http.Handler) http.Handler {
 	signFunc := func(w http.ResponseWriter, r *http.Request) {
 		if len(key) == 0 {
 			handler.ServeHTTP(w, r)
 			return
 		}
+
 		hexHash := r.Header.Get("HashSHA256")
 		if hexHash == "" {
 			handler.ServeHTTP(w, r)
@@ -39,6 +44,7 @@ func WithSigning(key []byte, handler http.Handler) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -50,10 +56,12 @@ func WithSigning(key []byte, handler http.Handler) http.Handler {
 			return
 		}
 		actual := h.Sum(nil)
+
 		if !hmac.Equal(expected, actual) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 		handler.ServeHTTP(hmacResponseWriter{ResponseWriter: w, key: key}, r)
 	}

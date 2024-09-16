@@ -7,6 +7,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+
 	"github.com/sudeeya/metrics-harvester/internal/metric"
 )
 

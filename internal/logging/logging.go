@@ -1,3 +1,4 @@
+// Package logging provides a way to create logger.
 package logging
 
 import (
@@ -7,14 +8,21 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// Log levels
+const (
+	Info  = "info"
+	Error = "error"
+	Fatal = "fatal"
+)
+
 func NewLogger(logLevel string) (*zap.Logger, error) {
 	logConfig := zap.NewDevelopmentConfig()
 	switch logLevel {
-	case "info":
+	case Info:
 		logConfig.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	case "error":
+	case Error:
 		logConfig.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
-	case "fatal":
+	case Fatal:
 		logConfig.Level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
 	default:
 		log.Fatalf("unknown log level: %s", logLevel)

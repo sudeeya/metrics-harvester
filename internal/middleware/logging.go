@@ -28,9 +28,17 @@ func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 	w.responseData.status = statusCode
 }
 
+// WithLogging provides middleware that handles logging of HTTP requests.
+// The following details are logged for each request:
+// - Request URI
+// - Request method
+// - Response status code
+// - Time taken to respond
+// - Body size in bytes
 func WithLogging(logger *zap.Logger, handler http.Handler) http.Handler {
 	logFunc := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
 		responseData := &responseData{
 			status: 0,
 			size:   0,
@@ -40,6 +48,7 @@ func WithLogging(logger *zap.Logger, handler http.Handler) http.Handler {
 			responseData:   responseData,
 		}
 		handler.ServeHTTP(&lw, r)
+
 		duration := time.Since(start)
 		sugar := logger.Sugar()
 		sugar.Infoln(
