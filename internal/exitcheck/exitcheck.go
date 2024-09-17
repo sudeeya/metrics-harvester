@@ -1,3 +1,4 @@
+// Package exitcheck provides an analyzer that checks for absence of os.Exit calls in main function.
 package exitcheck
 
 import (
@@ -8,7 +9,7 @@ import (
 
 var Analyzer = &analysis.Analyzer{
 	Name: "exitcheck",
-	Doc:  "check for absence of os.Exit call in main function",
+	Doc:  "check for absence of os.Exit calls in main function",
 	Run:  run,
 }
 
