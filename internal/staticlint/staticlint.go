@@ -1,6 +1,9 @@
 package staticlint
 
-import "golang.org/x/tools/go/analysis"
+import (
+	"github.com/kisielk/errcheck/errcheck"
+	"golang.org/x/tools/go/analysis"
+)
 
 func ListAnalyzers() []*analysis.Analyzer {
 	checks := make([]*analysis.Analyzer, 0)
@@ -10,6 +13,8 @@ func ListAnalyzers() []*analysis.Analyzer {
 
 	staticcheckChecks := ListStaticcheck()
 	checks = append(checks, staticcheckChecks...)
+
+	checks = append(checks, errcheck.Analyzer)
 
 	return checks
 }
