@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	analyzers := staticlint.ListAnalyzers()
+	analyzers := staticlint.NewAnalyzers()
 	multichecker.Main(
 		analyzers...,
 	)

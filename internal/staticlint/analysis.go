@@ -52,7 +52,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/usesgenerics"
 )
 
-func ListAnalysis() []*analysis.Analyzer {
+func listAnalysis() []*analysis.Analyzer {
 	return []*analysis.Analyzer{
 		appends.Analyzer,
 		asmdecl.Analyzer,

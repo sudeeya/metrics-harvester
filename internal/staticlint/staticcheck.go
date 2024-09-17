@@ -8,7 +8,7 @@ import (
 	"honnef.co/go/tools/stylecheck"
 )
 
-func ListStaticcheck() []*analysis.Analyzer {
+func listStaticcheck() []*analysis.Analyzer {
 	var analyzers []*analysis.Analyzer
 	for _, v := range staticcheck.Analyzers {
 		analyzers = append(analyzers, v.Analyzer)

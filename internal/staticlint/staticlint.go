@@ -5,16 +5,16 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func ListAnalyzers() []*analysis.Analyzer {
-	checks := make([]*analysis.Analyzer, 0)
+func NewAnalyzers() []*analysis.Analyzer {
+	analyzers := make([]*analysis.Analyzer, 0)
 
-	analysysChecks := ListAnalysis()
-	checks = append(checks, analysysChecks...)
+	analysysChecks := listAnalysis()
+	analyzers = append(analyzers, analysysChecks...)
 
-	staticcheckChecks := ListStaticcheck()
-	checks = append(checks, staticcheckChecks...)
+	staticcheckChecks := listStaticcheck()
+	analyzers = append(analyzers, staticcheckChecks...)
 
-	checks = append(checks, errcheck.Analyzer)
+	analyzers = append(analyzers, errcheck.Analyzer)
 
-	return checks
+	return analyzers
 }
