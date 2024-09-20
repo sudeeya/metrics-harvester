@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/sudeeya/metrics-harvester/internal/logging"
@@ -10,11 +11,21 @@ import (
 	"github.com/sudeeya/metrics-harvester/internal/server"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n",
+		buildVersion, buildDate, buildCommit)
+
 	cfg, err := server.NewConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	logger, err := logging.NewLogger(cfg.LogLevel)
 	if err != nil {
 		log.Fatal(err)
@@ -25,6 +36,7 @@ func main() {
 			log.Print(err)
 		}
 	}()
+
 	var repository repo.Repository
 	switch {
 	case cfg.DatabaseDSN != "":
@@ -32,6 +44,7 @@ func main() {
 	default:
 		repository = storage.NewMemStorage()
 	}
+
 	logger.Info("Starting metrics-harvester")
 	server := server.NewServer(logger, cfg, repository)
 	server.Run()
