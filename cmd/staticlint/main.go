@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/sudeeya/metrics-harvester/internal/staticlint"
 	"golang.org/x/tools/go/analysis/multichecker"
+
+	"github.com/sudeeya/metrics-harvester/internal/staticlint"
 )
 
 func main() {
