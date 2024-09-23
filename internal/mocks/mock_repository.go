@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+
 	metric "github.com/sudeeya/metrics-harvester/internal/metric"
 )
 
