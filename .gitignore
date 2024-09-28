@@ -30,3 +30,7 @@ go.work.sum
 # IDEs directories
 .idea
 .vscode
+
+
+# PEM files
+*.pem
