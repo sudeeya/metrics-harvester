@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -120,6 +125,17 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Accept-Encoding", "gzip")
+	if a.cfg.CryptoKey != "" {
+		publicKey, err := extractPublicKey(a.cfg.CryptoKey)
+		if err != nil {
+			return err
+		}
+		encryptedBody, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, body, nil)
+		if err != nil {
+			return err
+		}
+		body = encryptedBody
+	}
 	if a.cfg.Key != "" {
 		h := hmac.New(sha256.New, []byte(a.cfg.Key))
 		if _, err := h.Write(body); err != nil {
@@ -139,4 +155,20 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 
 func (a *Agent) Shutdown() {
 	os.Exit(0)
+}
+
+func extractPublicKey(file string) (*rsa.PublicKey, error) {
+	pemData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(pemData)
+	if block == nil || block.Type != "RSA PUBLIC KEY" {
+		return nil, fmt.Errorf("PEM file contains %s, not RSA PUBLIC KEY", block.Type)
+	}
+	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return publicKey, nil
 }
