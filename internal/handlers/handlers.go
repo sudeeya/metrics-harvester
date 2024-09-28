@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -303,7 +302,6 @@ func NewKeyHandler(logger *zap.Logger, privateKey *rsa.PrivateKey, symmetricKey 
 
 		decryptedBody, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, body, nil)
 		if err != nil {
-			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
