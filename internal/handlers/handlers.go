@@ -292,10 +292,7 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 	}
 }
 
-// NewKeyHandler returns an http.HandlerFunc that writes the JSON of a specified metric to the response.
-// The metric type and name are extracted from the JSON body of the request.
-// If the metric type is not supported or an error occurs while updating the metric,
-// it logs the error and returns an appropriate HTTP status code.
+// NewKeyHandler returns an http.HandlerFunc that writes symmetric key from request to the channel.
 func NewKeyHandler(logger *zap.Logger, privateKey *rsa.PrivateKey, symmetricKey chan<- []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
