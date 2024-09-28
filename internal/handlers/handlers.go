@@ -3,9 +3,13 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -284,5 +288,26 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 		if err := json.NewEncoder(w).Encode(m); err != nil {
 			logger.Error(err.Error())
 		}
+	}
+}
+
+// NewKeyHandler returns an http.HandlerFunc that writes symmetric key from request to the channel.
+func NewKeyHandler(logger *zap.Logger, privateKey *rsa.PrivateKey, symmetricKey chan<- []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		decryptedBody, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, body, nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		symmetricKey <- decryptedBody
+
+		w.WriteHeader(http.StatusOK)
 	}
 }

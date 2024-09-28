@@ -8,6 +8,7 @@ import (
 
 const (
 	defaultAddress         string = "localhost:8080"
+	defaultCryptoKey       string = ""
 	defaultDatabaseDSN     string = ""
 	defaultKey             string = ""
 	defaultLogLevel        string = "info"
@@ -19,6 +20,7 @@ const (
 
 type Config struct {
 	Address         string `env:"ADDRESS"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
 	LogLevel        string `env:"LOG_LEVEL"`
@@ -31,6 +33,7 @@ type Config struct {
 func NewConfig() (*Config, error) {
 	var cfg Config
 	flag.StringVar(&cfg.Address, "a", defaultAddress, "Server IP address and port")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", defaultCryptoKey, "Path to the file where the RSA private key is saved")
 	flag.StringVar(&cfg.DatabaseDSN, "d", defaultDatabaseDSN, "Database DSN (e.g., user=postgres password=secret host=localhost port=5432 database=pgx_test sslmode=disable)")
 	flag.StringVar(&cfg.Key, "k", defaultKey, "Key for HMAC hash")
 	flag.StringVar(&cfg.LogLevel, "l", defaultLogLevel, "Log level: info, error, fatal")
