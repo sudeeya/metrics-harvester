@@ -3,9 +3,14 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -284,5 +289,30 @@ func NewJSONValueHandler(logger *zap.Logger, repository repo.Repository) http.Ha
 		if err := json.NewEncoder(w).Encode(m); err != nil {
 			logger.Error(err.Error())
 		}
+	}
+}
+
+// NewKeyHandler returns an http.HandlerFunc that writes the JSON of a specified metric to the response.
+// The metric type and name are extracted from the JSON body of the request.
+// If the metric type is not supported or an error occurs while updating the metric,
+// it logs the error and returns an appropriate HTTP status code.
+func NewKeyHandler(logger *zap.Logger, privateKey *rsa.PrivateKey, symmetricKey chan<- []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		decryptedBody, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, body, nil)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		symmetricKey <- decryptedBody
+
+		w.WriteHeader(http.StatusOK)
 	}
 }

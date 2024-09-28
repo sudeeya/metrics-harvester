@@ -3,15 +3,15 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strconv"
@@ -67,6 +67,14 @@ func (a *Agent) Run() {
 		sigChan      = make(chan os.Signal, 1)
 	)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	var symmetricKey []byte
+	if a.cfg.CryptoKey != "" {
+		symmetricKey = generateSymmetricKey()
+		publicKey := extractPublicKey(a.cfg.CryptoKey)
+		a.shareSymmetricKey(symmetricKey, publicKey)
+	}
+
 	go func() {
 		for range pollTicker.C {
 			a.logger.Info("Updating metric values")
@@ -83,7 +91,7 @@ func (a *Agent) Run() {
 	go func() {
 		for range reportTicker.C {
 			a.logger.Info("Sending all metrics")
-			a.SendMetrics(metrics)
+			a.SendMetrics(metrics, symmetricKey)
 		}
 	}()
 	go func() {
@@ -94,10 +102,9 @@ func (a *Agent) Run() {
 	select {}
 }
 
-func (a *Agent) SendMetrics(metrics *Metrics) {
-	mSlice := metrics.List()
+func (a *Agent) shareSymmetricKey(symmetricKey []byte, publicKey *rsa.PublicKey) {
 	for _, backoff := range a.backoffSchedule {
-		if err := a.trySend(mSlice); err != nil {
+		if err := a.tryShare(symmetricKey, publicKey); err != nil {
 			a.logger.Error(err.Error())
 			time.Sleep(backoff)
 			continue
@@ -106,7 +113,42 @@ func (a *Agent) SendMetrics(metrics *Metrics) {
 	}
 }
 
-func (a *Agent) trySend(mSlice []metric.Metric) error {
+func (a *Agent) tryShare(symmetricKey []byte, publicKey *rsa.PublicKey) error {
+	request := a.client.R()
+	encryptedKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, symmetricKey, nil)
+	if err != nil {
+		return err
+	}
+	if a.cfg.Key != "" {
+		h := hmac.New(sha256.New, []byte(a.cfg.Key))
+		if _, err := h.Write(encryptedKey); err != nil {
+			return err
+		}
+		request.SetHeader("HashSHA256", hex.EncodeToString(h.Sum(nil)))
+	}
+	response, err := request.
+		SetBody(encryptedKey).
+		Post("/key/")
+	if err != nil {
+		return err
+	}
+	defer response.RawResponse.Body.Close()
+	return nil
+}
+
+func (a *Agent) SendMetrics(metrics *Metrics, symmetricKey []byte) {
+	mSlice := metrics.List()
+	for _, backoff := range a.backoffSchedule {
+		if err := a.trySend(mSlice, symmetricKey); err != nil {
+			a.logger.Error(err.Error())
+			time.Sleep(backoff)
+			continue
+		}
+		return
+	}
+}
+
+func (a *Agent) trySend(mSlice []metric.Metric, symmetricKey []byte) error {
 	var buf bytes.Buffer
 	gzipWriter, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
 	if err != nil {
@@ -126,14 +168,19 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Accept-Encoding", "gzip")
 	if a.cfg.CryptoKey != "" {
-		publicKey, err := extractPublicKey(a.cfg.CryptoKey)
+		block, err := aes.NewCipher(symmetricKey)
 		if err != nil {
 			return err
 		}
-		encryptedBody, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey, body, nil)
+		gcm, err := cipher.NewGCM(block)
 		if err != nil {
 			return err
 		}
+		nonce := make([]byte, gcm.NonceSize())
+		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+			return err
+		}
+		encryptedBody := gcm.Seal(nonce, nonce, body, nil)
 		body = encryptedBody
 	}
 	if a.cfg.Key != "" {
@@ -155,20 +202,4 @@ func (a *Agent) trySend(mSlice []metric.Metric) error {
 
 func (a *Agent) Shutdown() {
 	os.Exit(0)
-}
-
-func extractPublicKey(file string) (*rsa.PublicKey, error) {
-	pemData, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(pemData)
-	if block == nil || block.Type != "RSA PUBLIC KEY" {
-		return nil, fmt.Errorf("PEM file contains %s, not RSA PUBLIC KEY", block.Type)
-	}
-	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	return publicKey, nil
 }
