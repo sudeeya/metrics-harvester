@@ -10,6 +10,7 @@ import (
 const (
 	defaultAddress         string = "localhost:8080"
 	defaultBackoffSchedule string = "1,3,5"
+	defaultCryptoKey       string = ""
 	defaultKey             string = ""
 	defaultLogLevel        string = "info"
 	defaultPollInterval    int64  = 2
@@ -20,6 +21,7 @@ const (
 type Config struct {
 	Address         string `env:"ADDRESS"`
 	BackoffSchedule string `env:"BACKOFF_SCHEDULE"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 	Key             string `env:"KEY"`
 	LogLevel        string `env:"LOG_LEVEL"`
 	PollInterval    int64  `env:"POLL_INTERVAL"`
@@ -31,6 +33,7 @@ func NewConfig() (*Config, error) {
 	var cfg Config
 	flag.StringVar(&cfg.Address, "a", defaultAddress, "Server IP address and port")
 	flag.StringVar(&cfg.BackoffSchedule, "b", defaultBackoffSchedule, "Backoff schedule in seconds separated by commas")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", defaultCryptoKey, "Path to the file where the RSA public key is saved")
 	flag.StringVar(&cfg.Key, "k", defaultKey, "Key for HMAC hash")
 	flag.StringVar(&cfg.LogLevel, "ll", defaultLogLevel, "Log level: info, error, fatal")
 	flag.Int64Var(&cfg.PollInterval, "p", defaultPollInterval, "Polling interval in seconds")
