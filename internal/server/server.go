@@ -2,7 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -31,6 +34,7 @@ type Server struct {
 	logger     *zap.Logger
 	repository repo.Repository
 	handler    http.Handler
+	privateKey *rsa.PrivateKey
 }
 
 func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Server {
@@ -41,8 +45,11 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 	router := chi.NewRouter()
 	logger.Info("Initializing routes")
 	addRoutes(logger, repository, router)
+	logger.Info("Extracting private key from file")
+	privateKey := extractPrivateKey(logger, cfg.CryptoKey)
 	logger.Info("Initializing middleware")
 	handler := middleware.WithCompressing(router)
+	handler = middleware.WithDecryption(privateKey, handler)
 	handler = middleware.WithSigning([]byte(cfg.Key), handler)
 	handler = middleware.WithLogging(logger, handler)
 	return &Server{
@@ -50,6 +57,7 @@ func NewServer(logger *zap.Logger, cfg *Config, repository repo.Repository) *Ser
 		logger:     logger,
 		repository: repository,
 		handler:    handler,
+		privateKey: privateKey,
 	}
 }
 
@@ -108,6 +116,26 @@ func addRoutes(logger *zap.Logger, repository repo.Repository, router chi.Router
 	router.Post("/update/", handlers.NewJSONUpdateHandler(logger, repository))
 	router.Post("/updates/", handlers.NewBatchHandler(logger, repository))
 	router.Post("/value/", handlers.NewJSONValueHandler(logger, repository))
+}
+
+func extractPrivateKey(logger *zap.Logger, file string) *rsa.PrivateKey {
+	if file == "" {
+		logger.Info("Private key was not given. The server is running without decryption")
+		return nil
+	}
+	pemData, err := os.ReadFile(file)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	block, _ := pem.Decode(pemData)
+	if block == nil || block.Type != "RSA PRIVATE KEY" {
+		logger.Sugar().Fatalf("PEM file contains %s, not RSA PRIVATE KEY", block.Type)
+	}
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	return privateKey
 }
 
 func (s *Server) Run() {
